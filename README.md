@@ -13,7 +13,7 @@ A small open-world 3D RPG that runs in the browser. It's built with [three.js](h
 2. In `updates.json`, raise `gameVersion` (for example `1.2.0` → `1.3.0`) and add a news entry at the top.
 3. Push to `main`. Everyone's launcher picks up the new version the next time they open it.
 
-To ship a new launcher program (only needed when files in `launcher/` change), raise `version` in `launcher/package.json` and push a tag like `v1.0.1`. GitHub builds the Windows installer and attaches it to a new release.
+To ship a new launcher program (only needed when files in `launcher/` change), raise `version` in `launcher/package.json` and push to `main`. GitHub builds the Windows installer and publishes it as a new release.
 
 ## Create your hero
 
