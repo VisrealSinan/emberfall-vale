@@ -1,0 +1,23 @@
+{
+  "gameVersion": "1.2.0",
+  "news": [
+    {
+      "date": "2026-10-23",
+      "tag": "Patch 1.2",
+      "title": "The launcher is here",
+      "body": "Emberfall Vale now has its own Windows launcher. It checks for new versions every time you open it, so you get new content without reinstalling. Pick windowed or fullscreen, a resolution and a graphics level in Settings."
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Patch 1.1",
+      "title": "Heroes of the Vale",
+      "body": "Create your own hero. Choose Elf, Dwarf, Fishfolk or Undead, male or female, and your skin, hair and style. Then pick a class: the shapeshifting Druid, the Rogue, the Archer or the Warlock, each with four abilities on keys 1 to 4."
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Patch 1.0",
+      "title": "Emberfall Vale opens",
+      "body": "Explore an open valley of meadows, forests, lakes and mountains. Help Elder Maren with four quests, level up, and face the Ember Golem in the ruins to the northeast."
+    }
+  ]
+}

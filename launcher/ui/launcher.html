@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'">
+<title>Emberfall Vale</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="launcher.css">
+</head>
+<body>
+  <header class="titlebar">
+    <img src="icon.png" alt="" class="tb-icon">
+    <span class="tb-name">Emberfall Vale</span>
+    <div class="tb-btns">
+      <button id="btnMin" aria-label="Minimize"><svg viewBox="0 0 12 12"><path d="M2 6.5h8" /></svg></button>
+      <button id="btnClose" class="close" aria-label="Close"><svg viewBox="0 0 12 12"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" /></svg></button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="hero">
+      <div class="eyebrow" id="heroTag">Latest</div>
+      <h1>Emberfall Vale</h1>
+      <p class="tagline">An open valley, a village in need, and something burning in the ruins.</p>
+      <article class="feature" id="feature">
+        <h2 id="featureTitle"></h2>
+        <p id="featureBody"></p>
+      </article>
+    </section>
+
+    <aside class="news">
+      <div class="news-head"><span class="lab">News &amp; patch notes</span></div>
+      <div class="news-list" id="newsList"></div>
+    </aside>
+  </main>
+
+  <footer class="dock">
+    <div class="status">
+      <span class="lab">Game version</span>
+      <span class="status-line"><span class="dot" id="dot"></span><span id="statusText">Starting</span></span>
+      <div class="prog" id="prog" hidden><i id="progBar"></i></div>
+    </div>
+    <div class="dock-btns">
+      <button class="ghost" id="btnSettings">Settings</button>
+      <button class="ghost" id="btnGithub">GitHub</button>
+    </div>
+    <button class="play" id="btnPlay" disabled>Play</button>
+  </footer>
+
+  <div class="modal" id="settings" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+      <h2 id="setTitle">Settings</h2>
+      <div class="field"><span class="lab">Display</span><div class="seg" data-key="display">
+        <button data-v="windowed">Windowed</button><button data-v="fullscreen">Fullscreen</button></div></div>
+      <div class="field"><span class="lab">Window size</span><div class="seg" data-key="resolution">
+        <button data-v="1280x720">1280 × 720</button><button data-v="1600x900">1600 × 900</button><button data-v="1920x1080">1920 × 1080</button></div></div>
+      <div class="field"><span class="lab">Graphics</span><div class="seg" data-key="graphics">
+        <button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div>
+        <p class="hint">Low turns off shadows and smoothing. Use it if the game feels choppy.</p></div>
+      <p class="hint">Press F11 in the game to switch between windowed and fullscreen.</p>
+      <div class="sheet-btns"><button class="primary" id="btnSave">Save</button><button class="ghost" id="btnCancel">Cancel</button></div>
+    </div>
+  </div>
+
+  <script src="launcher.js"></script>
+</body>
+</html>
