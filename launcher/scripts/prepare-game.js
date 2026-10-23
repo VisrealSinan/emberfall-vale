@@ -33,11 +33,19 @@ const FONTS = [
   ['AlegreyaSans-Regular.ttf', 'ofl/alegreyasans/AlegreyaSans-Regular.ttf'],
   ['AlegreyaSans-Medium.ttf', 'ofl/alegreyasans/AlegreyaSans-Medium.ttf'],
   ['AlegreyaSans-Bold.ttf', 'ofl/alegreyasans/AlegreyaSans-Bold.ttf'],
+  ['MPLUSRounded1c-Regular.ttf', 'ofl/mplusrounded1c/MPLUSRounded1c-Regular.ttf'],
+  ['MPLUSRounded1c-Medium.ttf', 'ofl/mplusrounded1c/MPLUSRounded1c-Medium.ttf'],
+  ['MPLUSRounded1c-Bold.ttf', 'ofl/mplusrounded1c/MPLUSRounded1c-Bold.ttf'],
+  ['MPLUSRounded1c-ExtraBold.ttf', 'ofl/mplusrounded1c/MPLUSRounded1c-ExtraBold.ttf'],
 ];
 const CSS = `@font-face{font-family:'Cinzel';src:url(Cinzel.ttf) format('truetype');font-weight:400 900;font-display:swap}
 @font-face{font-family:'Alegreya Sans';src:url(AlegreyaSans-Regular.ttf) format('truetype');font-weight:400;font-display:swap}
 @font-face{font-family:'Alegreya Sans';src:url(AlegreyaSans-Medium.ttf) format('truetype');font-weight:500;font-display:swap}
 @font-face{font-family:'Alegreya Sans';src:url(AlegreyaSans-Bold.ttf) format('truetype');font-weight:700;font-display:swap}
+@font-face{font-family:'M PLUS Rounded 1c';src:url(MPLUSRounded1c-Regular.ttf) format('truetype');font-weight:400;font-display:swap}
+@font-face{font-family:'M PLUS Rounded 1c';src:url(MPLUSRounded1c-Medium.ttf) format('truetype');font-weight:500;font-display:swap}
+@font-face{font-family:'M PLUS Rounded 1c';src:url(MPLUSRounded1c-Bold.ttf) format('truetype');font-weight:700;font-display:swap}
+@font-face{font-family:'M PLUS Rounded 1c';src:url(MPLUSRounded1c-ExtraBold.ttf) format('truetype');font-weight:800;font-display:swap}
 `;
 
 (async () => {

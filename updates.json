@@ -1,6 +1,12 @@
 {
-  "gameVersion": "1.2.0",
+  "gameVersion": "2.0.0",
   "news": [
+    {
+      "date": "2026-10-23",
+      "tag": "Patch 2.0",
+      "title": "A whole new world",
+      "body": "Emberfall Vale is reborn in a cel-shaded anime style and the world is three times bigger: five zones, five towns and Wind Riders to fly between them. Make up to 8 characters on the new character select screen. Every class now learns 8 skills, and talent trees open at level 10. Find gear in 13 slots and 6 rarities, check it on your new character sheet, and take on 41 quests, elites and five zone bosses. Press Esc for the game menu."
+    },
     {
       "date": "2026-10-23",
       "tag": "Patch 1.2",
@@ -11,7 +17,7 @@
       "date": "2026-10-23",
       "tag": "Patch 1.1",
       "title": "Heroes of the Vale",
-      "body": "Create your own hero. Choose Elf, Dwarf, Fishfolk or Undead, male or female, and your skin, hair and style. Then pick a class: the shapeshifting Druid, the Rogue, the Archer or the Warlock, each with four abilities on keys 1 to 4."
+      "body": "Create your own hero. Choose Elf, Dwarf, Fishfolk or Undead, male or female, and your skin, hair and style. Then pick a class: the shapeshifting Druid, the Rogue, the Archer or the Warlock."
     },
     {
       "date": "2026-10-23",
