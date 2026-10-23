@@ -1,6 +1,12 @@
 {
-  "gameVersion": "2.1.0",
+  "gameVersion": "2.2.0",
   "news": [
+    {
+      "date": "2026-10-23",
+      "tag": "Patch 2.2",
+      "title": "Dungeons and real combat",
+      "body": "Every zone now has a dungeon: Bandit Hideout, Webwood Hollow, Sunken Temple, Frozen Catacombs and Heart of Cinder, each with elite packs, a mini-boss, a final boss and a treasure chest. Combat now works like an MMO: auto-attack, a global cooldown, energy, focus, mana and rage, and cast times. Druids get unique cat and bear forms for every race. Twilight Festival is the new default look, campfires glow steadily, monsters hit harder, and there are 10 new monster types and 25 new quests. Hover over any stat on the character sheet to see what it does."
+    },
     {
       "date": "2026-10-23",
       "tag": "Patch 2.1",

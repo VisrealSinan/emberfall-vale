@@ -131,6 +131,16 @@ const MOBS = {
   imp: { name: 'Cinder Imp', model: 'imp', color: 0xd83a2a, lv: [17, 19], hp: 0.8, ranged: true, proj: 0xff8a3a, range: 13, speed: 5, aggro: 16, junk: 'Smoldering Ash' },
   skeleton: { name: 'Ashen Skeleton', model: 'biped', hero: { race: 'undead', skinColor: 0xeee6d4, eyeColor: 0xff5a3a, glowEyes: true, style: -1, outfit: { top: 0x5a5048, trim: 0x3a3430, pants: 0x3a3430, boots: 0x2a2420, cape: null, scarf: null, robe: false }, weapon: 'axe' }, lv: [18, 20], speed: 4.5, aggro: 15, range: 2.6, junk: 'Ashen Bone' },
   hound: { name: 'Magma Hound', model: 'quad', color: 0x3a2a28, color2: 0x6a3a2a, eye: 0xffa03a, glowEyes: true, ember: true, lv: [19, 21], speed: 6.5, aggro: 17, junk: 'Charred Claw' },
+  shroom: { name: 'Bloomcap Shroomling', model: 'shroom', color: 0xff7a8a, color2: 0xfff0dc, lv: [2, 4], hp: 0.9, speed: 3.4, aggro: 11, junk: 'Soggy Cap' },
+  sharpshooter: { name: 'Bandit Sharpshooter', model: 'biped', hero: Object.assign({}, BANDIT_LOOK, { weapon: 'bow', outfit: Object.assign({}, BANDIT_LOOK.outfit, { top: 0x6a5a3a }) }), lv: [4, 6], hp: 0.8, ranged: true, proj: 0xc9a86a, range: 15, aggro: 17, junk: 'Frayed Bowstring', human: true },
+  bat: { name: 'Duskwing Bat', model: 'bat', color: 0x5a4a7a, color2: 0x3a2a4a, lv: [7, 9], hp: 0.85, speed: 5.5, aggro: 15, junk: 'Bat Fang' },
+  dryad: { name: 'Thornbound Dryad', model: 'biped', hero: { race: 'elf', sex: 'female', skinColor: 0x8ac87a, hairColor: 0x3a8a3a, eyeColor: 0xffe04a, glowEyes: true, style: 1, outfit: { top: 0x4a7a3a, trim: 0x8a5a2a, pants: 0x3a5a2a, boots: 0x3a2a1a, cape: null, scarf: null, robe: true }, weapon: 'staff' }, lv: [8, 10], ranged: true, proj: 0x7ae05a, range: 15, aggro: 16, junk: 'Withered Leaf', human: true },
+  serpent: { name: 'Mire Serpent', model: 'serpent', color: 0x4a8a3a, color2: 0xd8c85a, lv: [10, 13], speed: 4.5, aggro: 14, range: 2.6, junk: 'Shed Skin' },
+  bogshroom: { name: 'Bogshroom', model: 'shroom', color: 0x8a5ab0, color2: 0xc8d0a0, angry: true, lv: [9, 11], hp: 1.1, speed: 3, aggro: 12, junk: 'Rotting Cap' },
+  owl: { name: 'Snowwing Owl', model: 'bird', color: 0xf0f4fa, color2: 0xb8c8e0, eye: 0xffc83a, lv: [13, 15], speed: 6, aggro: 15, junk: 'Owl Pellet' },
+  frostgolem: { name: 'Frost Golem', model: 'golem', color: 0x9ab8d8, core: 0x7ad8ff, lv: [15, 17], hp: 1.8, dmg: 1.4, speed: 3, range: 4, aggro: 13, scale: 0.5, junk: 'Melting Ice' },
+  scorpion: { name: 'Ash Scorpion', model: 'scorpion', color: 0x7a4a32, color2: 0x5a3020, lv: [18, 20], hp: 1.2, speed: 4.5, aggro: 14, junk: 'Cracked Carapace' },
+  phoenix: { name: 'Cinder Phoenix', model: 'bird', color: 0xff6a2a, color2: 0xffd04a, eye: 0xffffff, glowEyes: true, flame: true, lv: [19, 21], ranged: true, proj: 0xff8a3a, range: 14, speed: 6, aggro: 16, junk: 'Smoldering Feather' },
   cgolem: { name: 'Cinder Golem', model: 'golem', color: 0x5a4a44, lv: [20, 22], hp: 2, dmg: 1.5, speed: 3, range: 4, aggro: 14, scale: 0.55, junk: 'Cooling Slag' },
 };
 // Named elites and bosses. `base` copies the look of a normal monster.
@@ -144,6 +154,16 @@ const NAMED = {
   frostmaw: { base: 'yeti', name: 'Frostmaw', lvl: 16, elite: true, scale: 1.3, color2: 0x4a6aa8, place: 'yetiCaves', respawn: 150 },
   rimefang: { base: 'frostwolf', name: 'Rimefang', lvl: 18, boss: true, scale: 2.5, place: 'rimeHollow', special: 'spit', respawn: 300 },
   scorchjaw: { base: 'hound', name: 'Scorchjaw', lvl: 21, elite: true, scale: 1.6, place: 'impFlats', respawn: 150 },
+  enforcer: { base: 'bandit', name: 'Enforcer Krug', lvl: 7, elite: true, dungeon: true, scale: 1.4, hero: Object.assign({}, BANDIT_LOOK, { weapon: 'axe' }) },
+  redfang: { base: 'bandit', name: 'Captain Redfang', lvl: 8, boss: true, dungeon: true, scale: 1.6, adds: 'bandit', hero: Object.assign({}, BANDIT_LOOK, { crown: true, weapon: 'sword', hairColor: 0xe0483a, outfit: Object.assign({}, BANDIT_LOOK.outfit, { top: 0x2a1a3a, cape: 0xd8394a }) }) },
+  webguard: { base: 'spider', name: 'Silkguard Venomfang', lvl: 11, elite: true, dungeon: true, scale: 1.6, color: 0x2a4a2a },
+  aranea: { base: 'spider', name: 'Broodmother Aranea', lvl: 12, boss: true, dungeon: true, scale: 2.6, color: 0x6a1a4a, color2: 0x2a0a2a, special: 'spit', adds: 'spider' },
+  templeguard: { base: 'lurker', name: 'Temple Guardian', lvl: 14, elite: true, dungeon: true, scale: 1.5, color: 0x3a6a8a },
+  hydra: { base: 'serpent', name: 'Hydra of the Deep', lvl: 15, boss: true, dungeon: true, scale: 2.6, color: 0x2a5a7a, color2: 0x8ad0c8, adds: 'serpent' },
+  bonewarden: { base: 'skeleton', name: 'Bonewarden', lvl: 18, elite: true, dungeon: true, scale: 1.45 },
+  frostlich: { base: 'wraith', name: 'The Frost Lich', lvl: 19, boss: true, dungeon: true, scale: 2, color: 0x6a8ad8, eye: 0x9fe8ff, special: 'spit', adds: 'wraith' },
+  magmaw: { base: 'hound', name: 'Magmaw', lvl: 22, elite: true, dungeon: true, scale: 1.7 },
+  ignaroth: { base: 'cgolem', name: 'Pyrelord Ignaroth', lvl: 24, boss: true, dungeon: true, scale: 2.2, adds: 'imp' },
   embergolem: { base: 'cgolem', name: 'The Ember Golem', lvl: 23, boss: true, scale: 1.9, place: 'moltenRuins', respawn: 300 },
 };
 const SPAWNS = [
@@ -151,6 +171,11 @@ const SPAWNS = [
   ['spider', 'silkHollow', 8, 60], ['spider', 'wood', 8], ['wisp', 'oldGrove', 10, 50], ['treant', 'wood', 10], ['cultist', 'cultCamp', 10, 30],
   ['crab', 'crabShore', 14, 55], ['lurker', 'lurkerReeds', 12, 55], ['toad', 'marsh', 11],
   ['frostwolf', 'frost', 14], ['wraith', 'wraithField', 10, 55], ['yeti', 'yetiCaves', 9, 50],
+  ['shroom', 'slimeMeadow', 8, 60], ['shroom', 'vale', 6], ['sharpshooter', 'banditCamp', 6, 30],
+  ['bat', 'duskHollow', 10, 45], ['dryad', 'dryadGlade', 9, 40],
+  ['serpent', 'serpentBank', 12, 45], ['bogshroom', 'marsh', 10],
+  ['owl', 'frost', 10], ['frostgolem', 'frostQuarry', 8, 40],
+  ['scorpion', 'scorchDunes', 11, 45], ['phoenix', 'cinder', 8],
   ['imp', 'impFlats', 13, 55], ['skeleton', 'boneYard', 12, 50], ['hound', 'cinder', 10], ['cgolem', 'moltenRuins', 7, 60],
 ];
 
@@ -241,6 +266,32 @@ Q('q_ore', 'dorn', 19, 'Cinder Ore', 'There\'s ore all over the waste, glowing o
 Q('q_scorch', 'varr', 20, 'Wanted: Scorchjaw', 'The alpha magma hound, Scorchjaw, hunts the imp flats. It killed my best scout. End it.', [K('scorchjaw', 1)], { req: ['q_imps'], reward: 'blue', xpMul: 1.5, done: 'You avenged her. Thank you.' });
 Q('q_golems', 'ilsa', 20, 'Golem Fragments', 'Cinder golems guard the road to the Molten Ruins. Break seven of them to open the way.', [K('cgolem', 7)], { req: ['q_bones'], done: 'The road to the ruins is open.' });
 Q('q_ember', 'varr', 22, 'The Ember Golem', 'At the heart of the Molten Ruins stands the Ember Golem, the source of all this fire. It slams the ground and the earth burns. Bring potions, watch the ground, and destroy it.', [K('embergolem', 1)], { req: ['q_golems', 'q_cores'], reward: 'epic', xpMul: 3, done: 'The fire is going out all across the waste. You\'re a legend now, {name}.' });
+// ---- more quests (2.2) ----
+Q('q_shrooms', 'hobb', 3, 'Mushroom Menace', 'Walking mushrooms! In my turnip patch! They pop up in the meadows north of the village. Stomp six of them.', [K('shroom', 6)], { done: 'Ha! My turnips are safe. For now.' });
+Q('q_spores', 'maren', 4, 'Glowing Spores', 'The shroomlings carry bright spores that make a wonderful sleeping draught. Bring me five.', [L('shroom', 'Bright Spore', 5, 0.6)], { req: ['q_slimes'], done: 'These will help the sick children sleep. Thank you.' });
+Q('q_snipers', 'brannoc', 5, 'Eyes in the Trees', 'Bandit sharpshooters are picking off travelers from the trees around their camp. Take out five of them.', [K('sharpshooter', 5)], { req: ['q_bandits'], done: 'The roads are a little safer now.' });
+Q('q_pelts_v', 'pell', 4, 'A Merchant\'s Favor', 'Wolf pelts sell like hotcakes in the city. Bring me six from the wolves southeast of here and I\'ll make it worth your while.', [L('wolf', 'Wolf Pelt', 6, 0.55)], { done: 'Beautiful! These will fetch a fine price.' });
+Q('q_dun1', 'brannoc', 7, 'The Bandit Hideout', 'Gorrak was only the front man. The real leader, Captain Redfang, hides in a cave east of the bandit camp. Take a group if you can, or go in carefully. End this for good.', [K('redfang', 1)], { req: ['q_gorrak'], reward: 'blue', xpMul: 2.5, done: 'Redfang is finished? Then the bandits are broken. You\'re a hero, {name}.' });
+Q('q_bats', 'kael', 8, 'Wings in the Dark', 'Giant bats nest in Dusk Hollow, north of town. They swarm anyone who walks the north path at night. Kill eight.', [K('bat', 8)], { done: 'The north path is quiet again.' });
+Q('q_wings', 'fen', 8, 'Bat Wing Tonic', 'Leathery bat wings make a bitter tonic that cures night blindness. Six, please.', [L('bat', 'Leathery Wing', 6, 0.6)], { done: 'Ugh, the smell. Perfect.' });
+Q('q_dryads', 'sylva', 9, 'Thornbound', 'The dryads of the southern glade have been twisted by the cult\'s magic. It breaks my heart, but they must be stopped. Six of them.', [K('dryad', 6)], { req: ['q_webs'], done: 'May the forest take them back gently.' });
+Q('q_seeds', 'tamsin', 9, 'Dryad Seeds', 'The dryads carry thornseeds. Planted right, they grow into the best timber you\'ve ever seen. Five, and I\'ll pay well.', [L('dryad', 'Thornseed', 5, 0.6)], { done: 'Pleasure doing business!' });
+Q('q_dun2', 'sylva', 11, 'Webwood Hollow', 'Mother Silkweaver had a daughter: Broodmother Aranea, deep in Webwood Hollow at the far west edge of the forest. Kill her before she becomes worse than her mother.', [K('aranea', 1)], { req: ['q_silkweaver'], reward: 'blue', xpMul: 2.5, done: 'The last of the brood is gone. Whisperwood can breathe again.' });
+Q('q_serpents', 'wynn', 11, 'Serpents in the Shallows', 'Mire serpents slither along the southeast bank. One took my best dog. Kill eight.', [K('serpent', 8)], { done: 'Good riddance.' });
+Q('q_scales', 'marlo', 11, 'Serpent Scales', 'Serpent scales make waterproof boots. Very popular around here. Six scales!', [L('serpent', 'Serpent Scale', 6, 0.55)], { done: 'Dry feet for everyone!' });
+Q('q_bogshroom', 'moss', 10, 'The Rotting Caps', 'Mrrgl. Bogshrooms are spreading rot through the marsh. Squash eight of them.', [K('bogshroom', 8)], { done: 'The water smells sweeter already.' });
+Q('q_bogspores', 'moss', 11, 'Bogshroom Spores', 'The rot spores can be turned into medicine. Bring Old Moss six.', [L('bogshroom', 'Rot Spore', 6, 0.6)], { req: ['q_bogshroom'], done: 'Many fevers will break because of you.' });
+Q('q_dun3', 'halden', 14, 'The Sunken Temple', 'There\'s an old temple half under the water at the far south of the marsh. Something with many heads lives inside. The Hydra of the Deep. Slay it.', [K('hydra', 1)], { req: ['q_maw'], reward: 'blue', xpMul: 2.5, done: 'The Hydra is dead! Reedwater will sing about you for a hundred years.' });
+Q('q_owls', 'brina', 14, 'Snowwing Owls', 'Snowwing owls dive at our scouts and steal their food. Thin them out: eight.', [K('owl', 8)], { done: 'The scouts send their thanks.' });
+Q('q_feathers', 'greta', 14, 'Fine Feathers', 'Snowwing feathers make the warmest pillows. Six, please!', [L('owl', 'Snowy Feather', 6, 0.6)], { done: 'Ooh, so soft!' });
+Q('q_fgolems', 'orrin', 16, 'Walking Ice', 'Frost golems have risen in the quarry west of the fort. They crush everything. Shatter six.', [K('frostgolem', 6)], { req: ['q_spirits'], done: 'The quarry can be worked again.' });
+Q('q_hearts', 'ysolde', 16, 'Frozen Hearts', 'The frost golems carry hearts of ice. Our sages can use them to strengthen the walls. Bring five.', [L('frostgolem', 'Frozen Heart', 5, 0.6)], { req: ['q_fgolems'], done: 'Frostwatch\'s walls will hold for years.' });
+Q('q_dun4', 'ysolde', 18, 'The Frozen Catacombs', 'Beneath the snows to the far north lie the Frozen Catacombs. The Frost Lich who raised the wraiths waits there. Destroy it.', [K('frostlich', 1)], { req: ['q_rimefang'], reward: 'blue', xpMul: 2.5, done: 'The Lich is gone and the dead are at rest. Thank you, {name}.' });
+Q('q_scorp', 'dorn', 18, 'Stingers', 'Ash scorpions infest the dunes south of camp. They keep stinging the pack animals. Kill eight.', [K('scorpion', 8)], { done: 'The mules are grateful. So am I.' });
+Q('q_svenom', 'zahra', 18, 'Scorpion Venom', 'Ash venom is worth its weight in gold to the right alchemist. Six glands!', [L('scorpion', 'Ash Venom Gland', 6, 0.6)], { done: 'Careful, careful... perfect.' });
+Q('q_phoenix', 'ilsa', 20, 'Rebirth in Ash', 'Cinder phoenixes are being born from the burning ground. If they gather, they\'ll set the whole waste alight. Put down six.', [K('phoenix', 6)], { done: 'The skies are clearer already.' });
+Q('q_plumes', 'ilsa', 21, 'Phoenix Plumes', 'Phoenix plumes hold the fire\'s memory. I need five to study it.', [L('phoenix', 'Ember Plume', 5, 0.6)], { req: ['q_phoenix'], done: 'Fascinating. Truly fascinating.' });
+Q('q_dun5', 'varr', 23, 'Heart of Cinder', 'The Ember Golem was a servant. Its master, Pyrelord Ignaroth, waits in the Heart of Cinder at the far east edge of the waste. This is the last fight.', [K('ignaroth', 1)], { req: ['q_ember'], reward: 'epic', xpMul: 3, done: 'Ignaroth is gone. The fire is out. Emberfall Vale is free, {name}.' });
 const QUEST = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
 const questXP = (q) => Math.round(xpNext(q.lvl) * 0.35 * (q.xpMul || 1));
 const questGold = (q) => Math.round((5 + q.lvl * 3) * (q.xpMul || 1));

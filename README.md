@@ -18,9 +18,12 @@ An open-world, anime-styled 3D RPG that runs in the browser and as a Windows app
   - **Archer:** Multi-Shot, Power Shot, Disengage, Serpent Sting, Rain of Arrows, Concussive Shot, Rapid Fire, Spirit Wolf.
   - **Warlock:** Corruption, Drain Life, Summon Imp, Immolate, Shadowfury, Fear, Chaos Bolt, Summon Infernal.
 - **Talent trees** from level 10: three trees per class with a capstone talent each. One point per level up to the level cap of 25.
-- **18 monster types**, elite versions with gold rings, 5 wanted elites and 5 zone bosses whose big attacks are telegraphed with red circles on the ground.
+- **28 monster types**, elite versions with gold rings, 5 wanted elites and 5 zone bosses whose big attacks are telegraphed with red circles on the ground.
 - **Gear:** 13 equipment slots, 6 rarities (Poor to Legendary), stats, tooltips that compare against what you're wearing, a 32-slot bag and merchants in every town.
-- **41 quests** across all five towns, with quest chains, item rewards to choose from and a quest log.
+- **66 quests** across all five towns, with quest chains, item rewards to choose from and a quest log.
+- **5 dungeons**, one per zone (Bandit Hideout, Webwood Hollow, Sunken Temple, Frozen Catacombs, Heart of Cinder), each with elite packs, a mini-boss, a final boss who calls for help, and a treasure chest.
+- **MMO-style combat:** auto-attack, a global cooldown, class resources (energy, focus, mana, rage) and cast times that moving interrupts.
+- **5 art styles** in Settings: Twilight Festival (default), Bright Anime, Painted Meadow, Crisp Cel and Moonlit Night.
 
 ## Controls
 
@@ -55,6 +58,7 @@ node tools/build.js
 | `src/30-models.js` | Anime characters, druid forms, monsters, pets |
 | `src/40-data.js` | Races, classes, items, monsters, NPCs, quests |
 | `src/41-skills.js` | Class skills and talent trees |
+| `src/45-dungeons.js` | Dungeon layouts, gates, entering and leaving, chests |
 | `src/50-game.js` | Stats, combat, monster AI, loot, quests, saving |
 | `src/60-ui.js` | HUD, tooltips, character sheet, bags, talents, maps, dialogue |
 | `src/70-screens.js` | Character select and creator |

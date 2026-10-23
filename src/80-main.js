@@ -40,7 +40,7 @@ function interact() {
   if (P.dead || mode !== 'play') return;
   if (!$('winNpc').hidden) { closeWin('winNpc'); return; }
   const near = nearestInteract(); if (!near) return;
-  if (near.kind === 'npc') { const n = near.n; openNpc(n); } else gatherNode(near.nd);
+  if (near.kind === 'npc') { const n = near.n; openNpc(n); } else if (near.kind === 'gate') enterDungeon(near.d); else if (near.kind === 'exit') leaveDungeon(); else if (near.kind === 'chest') openChest(); else gatherNode(near.nd);
 }
 
 /* ---------------- pointer ---------------- */
@@ -105,9 +105,10 @@ function updateSky(dt) {
   sun.position.normalize().multiplyScalar(110).add(_v3.set(P.x, P.y, P.z)); sun.target.position.set(P.x, P.y, P.z);
   stars.material.opacity = 1 - smooth(-0.2, 0.1, sh);
   const cc = 0.35 + 0.65 * df; for (const c of clouds) { const u = c.userData; u.a += u.sp * dt; c.position.set(camera.position.x + Math.cos(u.a) * u.r, u.y, camera.position.z + Math.sin(u.a) * u.r); c.material.color.setRGB(cc, cc, cc + 0.05 * (1 - df)).lerp(tmpC.set(0xffb08a), dusk * 0.4); }
-  for (const f of fires) { f.l.intensity = (f.base + (1 - df) * 1.5) * (0.85 + Math.random() * 0.3); f.f.scale.y = 0.85 + Math.random() * 0.35; }
-  if (lavaLight) lavaLight.intensity = 1.4 + Math.random() * 0.4;
+  fires.forEach((f, i) => { f.l.intensity = (f.base + (1 - df) * 1.2) * (0.96 + 0.04 * Math.sin(clock * 2.2 + i * 1.7)); f.f.scale.y = 0.95 + 0.06 * Math.sin(clock * 3 + i); });
+  if (lavaLight) lavaLight.intensity = 1.5 + 0.1 * Math.sin(clock * 1.3);
   skyDome.position.copy(camera.position); stars.position.copy(camera.position);
+  if (DUN.cur) dungeonEnv();
   const hrs = dayT < 0.65 ? 6 + (dayT / 0.65) * 12 : (18 + ((dayT - 0.65) / 0.35) * 12) % 24, hh = Math.floor(hrs), mm = Math.floor((hrs - hh) * 6) * 10;
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
@@ -130,6 +131,7 @@ function updatePlayer(dt) {
   let moving = false, sprint = false;
   const inCombat = clock - P.lastCombat < 5;
   const formSpd = CH.cls === 'druid' ? (P.form === 'cat' ? 1.25 : P.form === 'bear' ? 0.95 : 1) : 1;
+  const px0 = P.x, pz0 = P.z;
   if (len > 0.08 && !P.dash) {
     const n = Math.max(1, len); ix /= n; iz /= n;
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = -fz, rz = fx, mx = fx * iz + rx * ix, mz = fz * iz + rz * ix;
@@ -140,16 +142,18 @@ function updatePlayer(dt) {
   if (P.dash) { P.x += P.dash.vx * dt; P.z += P.dash.vz * dt; P.dash.t -= dt; if (P.dash.t <= 0) P.dash = null; }
   P.stam = clamp(P.stam + (sprint && moving ? -24 : 20) * dt, 0, 100);
   collide(P, druidForm && P.form === 'bear' ? 0.9 : 0.5);
-  const r = Math.hypot(P.x, P.z); if (r > 548) { P.x *= 548 / r; P.z *= 548 / r; }
+  if (DUN.cur) { if (!walkable(P.x, P.z)) { if (walkable(P.x, pz0)) P.z = pz0; else if (walkable(px0, P.z)) P.x = px0; else { P.x = px0; P.z = pz0; } if (!walkable(P.x, P.z)) { P.x = DUN.cur.ox + DUN_START.x; P.z = DUN.cur.oz + DUN_START.z; } } }
+  else { const r = Math.hypot(P.x, P.z); if (r > 548) { P.x *= 548 / r; P.z *= 548 / r; } }
   const g2 = Math.max(groundAt(P.x, P.z), -1.15);
   P.vy -= 26 * dt; P.y += P.vy * dt;
   if (P.y <= g2 || (P.onGround && P.y - g2 < 0.7 && P.vy <= 0)) { P.y = g2; P.vy = 0; P.onGround = true; } else P.onGround = false;
   // regeneration and timers
-  if (clock - P.lastHurt > 6) heal(P.maxHp * (inCombat ? 0.01 : 0.04) * dt, false);
+  if (clock - P.lastHurt > 6) heal(P.maxHp * (inCombat ? 0.005 : 0.025) * dt, false);
   if (R.swim && inWater) heal(P.maxHp * 0.05 * dt, false);
   for (const k in P.buffs) { const b = P.buffs[k]; if (b.hps) heal(b.hps * dt, false); b.t -= dt; if (b.t <= 0) { delete P.buffs[k]; if (k === 'stealth') setGhostAll(false); if (k === 'poison') for (const m of hero.blades) m.emissive.setHex(0x111111); } }
   const hm = hasteMul(); for (const k in cds) if (cds[k] > 0) cds[k] -= dt * (k === 'potion' ? 1 : hm);
   P.invuln -= dt;
+  updateRes(dt); updateCast(dt, moving || !!P.dash); updateAuto(dt);
   // attack
   P.walk += dt * (moving ? (sprint ? 15 : 10) : 0);
   let act = -1, actKind = null;
@@ -172,11 +176,13 @@ function updateCamera(dt) {
   if (mode === 'select' || mode === 'create') {
     previewYaw += dt * 0.12; const m = CH && CH.cls === 'druid' && P.form === 'bear' ? 1.4 : 1, d = 5.6 * m, h = RACE_SHAPE[CH ? CH.race : 'human'].h;
     if (hero) { hero.g.position.set(P.x, P.y, P.z); hero.g.rotation.y = previewYaw; animBiped(hero, 0, false, -1); }
+    for (const m of [cat, bear]) if (m) { m.g.position.set(P.x, P.y, P.z); m.g.rotation.y = previewYaw; }
     camera.position.set(P.x + Math.sin(0.5) * d, P.y + 2.0 * h, P.z + Math.cos(0.5) * d); camera.lookAt(P.x, P.y + 1.25 * h, P.z); return;
   }
   const tx = P.x, ty = P.y + 1.7, tz = P.z;
   camLook.x += (tx - camLook.x) * Math.min(1, dt * 10); camLook.y += (ty - camLook.y) * Math.min(1, dt * 6); camLook.z += (tz - camLook.z) * Math.min(1, dt * 10);
-  const d = camDist * (CH.cls === 'druid' && P.form === 'bear' ? 1.2 : 1);
+  let d = camDist * (CH.cls === 'druid' && P.form === 'bear' ? 1.2 : 1);
+  if (DUN.cur) { while (d > 2.5 && !walkable(camLook.x + Math.sin(camYaw) * Math.cos(camPitch) * d, camLook.z + Math.cos(camYaw) * Math.cos(camPitch) * d)) d -= 0.5; }
   const cx = camLook.x + Math.sin(camYaw) * Math.cos(camPitch) * d, cz = camLook.z + Math.cos(camYaw) * Math.cos(camPitch) * d;
   let cy = camLook.y + Math.sin(camPitch) * d; cy = Math.max(cy, Math.max(groundAt(cx, cz), 0) + 0.8);
   camera.position.set(cx, cy, cz);
@@ -193,7 +199,7 @@ function frame(now) {
   if (play) {
     updatePlayer(dt);
     for (const e of enemies) updateEnemy(e, dt);
-    updatePets(dt); updateProjectiles(dt); updateTeles(dt);
+    updatePets(dt); updateProjectiles(dt); updateTeles(dt); updateDungeon(dt);
     for (let i = timers.length - 1; i >= 0; i--) { timers[i].t -= dt; if (timers[i].t <= 0) { const f = timers[i].fn; timers.splice(i, 1); f(); } }
   }
   updateFx(dt);
@@ -205,11 +211,12 @@ function frame(now) {
   if (t05 <= 0) {
     t05 = 0.5; cullChunks(play ? P.x : camera.position.x, play ? P.z : camera.position.z);
     if (play) { discoverTowns(); mmQuest = questPoints();
-      const z = zoneAt(P.x, P.z); if (z !== lastZone) { lastZone = z; $('zoneName').textContent = z.name; $('zbName').textContent = z.name; $('zbSub').textContent = `${z.sub} · Level ${z.lv[0]}-${z.lv[1]}`; const zb = $('zoneBanner'); zb.classList.add('show'); setTimeout(() => zb.classList.remove('show'), 3500); } }
+      const z = DUN.cur ? { name: DUN.cur.name, sub: 'Dungeon', lv: DUN.cur.lv, id: DUN.cur.id } : zoneAt(P.x, P.z); if (z.id !== (lastZone && lastZone.id)) { lastZone = z; $('zoneName').textContent = z.name; $('zbName').textContent = z.name; $('zbSub').textContent = `${z.sub} · Level ${z.lv[0]}-${z.lv[1]}`; const zb = $('zoneBanner'); zb.classList.add('show'); setTimeout(() => zb.classList.remove('show'), 3500); } }
   }
   if (play) {
     if (t01 <= 0) { t01 = 0.1; updateHUD(skyTxt); drawMinimap(); }
     updatePlates(); renderPreview(dt);
+    const cb = $('castbar'); if (P.cast) { cb.hidden = false; $('castFill').style.width = Math.min(100, P.cast.t / P.cast.dur * 100) + '%'; $('castTxt').textContent = P.cast.sk.name; } else if (!cb.hidden) cb.hidden = true;
     if (!$('winMap').hidden && Math.floor(clock * 2) !== Math.floor((clock - dt) * 2)) renderBigMap();
     saveT += dt; if (saveT > 15) { saveT = 0; saveChar(); }
     if (curNpc && !$('winNpc').hidden && Math.hypot(curNpc.x - P.x, curNpc.z - P.z) > 8) closeWin('winNpc');
@@ -233,7 +240,7 @@ spawnNpcs();
 spawnAll();
 initPreview();
 STORE = loadStore();
-window.__emberfall = { P, enemies, npcs, nodes, renderer, hurtPlayer, scene, chunks, get CH() { return CH; }, gainXP, setTarget, addItem, genItem };
+window.__emberfall = { P, enemies, npcs, nodes, renderer, hurtPlayer, scene, chunks, DUN, DUNGEONS, dealDamage, get CH() { return CH; }, gainXP, setTarget, addItem, genItem };
 M = freshMods();
 toSelect();
 requestAnimationFrame(frame);

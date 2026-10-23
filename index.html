@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Emberfall Vale</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,7 +37,10 @@ button{font-family:var(--body);color:inherit}
 .bar i{display:block;height:100%;width:100%;border-radius:6px;transition:width .15s linear}
 .bar span{position:absolute;inset:0;display:grid;place-items:center;font-size:9.5px;font-weight:800;text-shadow:0 1px 2px #000;font-variant-numeric:tabular-nums}
 .bar.hp i{background:linear-gradient(90deg,var(--hp2),var(--hp))}
-.bar.st{height:5px}.bar.st i{background:var(--stam)}
+.bar.st{height:4px}.bar.st i{background:var(--stam)}
+.bar.rs{height:10px}
+#pframe.combat .portrait{border-color:var(--hp);box-shadow:0 0 0 2px rgba(0,0,0,.5),0 0 12px rgba(255,90,106,.7)}
+.slot.nores .ic{filter:saturate(.25) brightness(.55) sepia(.3) hue-rotate(180deg)}
 #buffs{top:calc(72px + env(safe-area-inset-top,0px));left:calc(12px + env(safe-area-inset-left,0px));display:flex;gap:4px;flex-wrap:wrap;max-width:260px}
 .buff{width:30px;height:30px;border-radius:8px;border:1px solid var(--line2);display:grid;place-items:center;font-size:10px;font-weight:800;position:relative;text-shadow:0 1px 2px #000;background:var(--panel)}
 .buff b{position:absolute;bottom:-1px;right:2px;font-size:9px}
@@ -138,6 +142,11 @@ button{font-family:var(--body);color:inherit}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:3px 18px;margin-top:12px;font-size:13px}
 .stats div{display:flex;justify-content:space-between;border-bottom:1px dashed rgba(255,255,255,.08);padding:2px 0}
 .stats b{font-variant-numeric:tabular-nums;color:var(--gold)}
+.stats .srow{display:flex;justify-content:space-between;border:0;border-bottom:1px dashed rgba(255,255,255,.08);background:none;padding:3px 0;font-size:13px;cursor:help;text-align:left;color:var(--text)}
+.stats .srow:hover,.stats .srow:focus-visible{color:var(--gold);outline:none}
+.sdesc{grid-column:1/-1;margin:8px 0 0;font-size:12.5px;line-height:1.45;color:var(--muted);min-height:3em}
+.sdesc b{color:var(--text)}
+@media (max-width:1180px){body:not(.touch) #micro{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
 
 #winBags{right:calc(12px + env(safe-area-inset-right,0px));bottom:110px;width:min(420px,calc(100vw - 24px))}
 .bagrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px}
@@ -314,6 +323,7 @@ body:not([data-mode="play"]) #hud,body:not([data-mode="play"]) #touch,body:not([
     <div class="fbody">
       <div class="fname"><span id="pName"></span><span class="flvl" id="pLvl"></span></div>
       <div class="bar hp"><i id="pHp"></i><span id="pHpTxt"></span></div>
+      <div class="bar rs"><i id="pRes"></i><span id="pResTxt"></span></div>
       <div class="bar st"><i id="pSt"></i></div>
     </div>
   </div>
@@ -429,7 +439,7 @@ body:not([data-mode="play"]) #hud,body:not([data-mode="play"]) #touch,body:not([
   <div class="sec"><span class="lab">Skin</span><div class="sws" id="skinOpts"></div></div>
   <div class="sec"><span class="lab">Eyes</span><div class="sws" id="eyeOpts"></div></div>
   <div class="sec"><span class="lab" id="hairLab">Hair</span><div class="sws" id="hairOpts"></div><div class="seg" id="styleOpts"></div></div>
-  <div class="sec"><span class="lab">Class</span><div class="opts2" id="classOpts"></div></div>
+  <div class="sec"><span class="lab">Class</span><div class="opts2" id="classOpts"></div><div class="seg" id="formPrev"></div></div>
   <div class="info" id="charInfo"></div>
   <div class="btnrow"><button class="btn" id="btnMake">Create character</button><button class="btn ghost" id="btnBack">Back</button></div>
 </div>
@@ -505,6 +515,16 @@ const PLACES = {
   impFlats: { x: 390, z: 20, r: 45 },
   boneYard: { x: 430, z: -110, r: 40 },
   moltenRuins: { x: 470, z: -190, r: 30, name: 'Molten Ruins' },
+  duskHollow: { x: -280, z: -70, r: 40 },
+  dryadGlade: { x: -330, z: 160, r: 40 },
+  serpentBank: { x: 150, z: 430, r: 45 },
+  frostQuarry: { x: -170, z: -335, r: 40 },
+  scorchDunes: { x: 330, z: -185, r: 45 },
+  hideoutGate: { x: 150, z: -138, r: 9, name: 'Bandit Hideout' },
+  webwoodGate: { x: -495, z: 118, r: 9, name: 'Webwood Hollow' },
+  templeGate: { x: 100, z: 486, r: 9, name: 'Sunken Temple' },
+  catacombGate: { x: 60, z: -495, r: 9, name: 'Frozen Catacombs' },
+  cinderGate: { x: 495, z: -60, r: 9, name: 'Heart of Cinder' },
 };
 const ROADS = TOWNS.slice(1).map((t) => [TOWNS[0], t]).concat([[TOWN.ashfall, PLACES.moltenRuins]]);
 
@@ -562,6 +582,7 @@ function heightAt(x, z) {
 const H = new Float32Array((SEG + 1) * (SEG + 1));
 for (let iz = 0; iz <= SEG; iz++) for (let ix = 0; ix <= SEG; ix++) H[iz * (SEG + 1) + ix] = heightAt(-HALF + ix * STEP, -HALF + iz * STEP);
 function groundAt(x, z) {
+  if (x > 1500) return 0;
   const gx = clamp((x + HALF) / STEP, 0, SEG - 1e-4), gz = clamp((z + HALF) / STEP, 0, SEG - 1e-4);
   const ix = Math.floor(gx), iz = Math.floor(gz), u = gx - ix, v = gz - iz, W = SEG + 1;
   const ha = H[iz * W + ix], hd = H[iz * W + ix + 1], hb = H[(iz + 1) * W + ix], hc = H[(iz + 1) * W + ix + 1];
@@ -613,8 +634,8 @@ const STYLES = {
   twilight: { name: 'Twilight Festival', grad: [70, 130, 195, 240], ink: 0x1a1030, tint: 0xffe2cc, day: [0x3a9cff, 0xb8dcff], dusk: [0x4a3aa8, 0xff9a6a], night: [0x0a1030, 0x28305a], hemi: 1.05, sun: 1.1, sunCol: 0xfff4e0, fog: 0.9, lockT: 0.615, css: 'saturate(1.15)' },
   moonlit: { name: 'Moonlit Night', grad: [70, 120, 190, 235], ink: 0x0a0a20, tint: 0xd8e4ff, day: [0x3a9cff, 0xb8dcff], dusk: [0x4a3aa8, 0xff9a6a], night: [0x101c58, 0x3a4a90], hemi: 1.6, sun: 1, sunCol: 0xfff4e0, fog: 0.8, lockT: 0.86, css: 'brightness(1.2) saturate(1.1)' },
 };
-let STYLE_ID = 'bright';
-try { const q = new URLSearchParams(location.search).get('style'); STYLE_ID = STYLES[q] ? q : STYLES[store.get('ev-style', 'bright')] ? store.get('ev-style', 'bright') : 'bright'; } catch (e) {}
+let STYLE_ID = 'twilight';
+try { const q = new URLSearchParams(location.search).get('style'); STYLE_ID = STYLES[q] ? q : STYLES[store.get('ev-style2', 'twilight')] ? store.get('ev-style2', 'twilight') : 'twilight'; } catch (e) {}
 const ST = STYLES[STYLE_ID];
 if (ST.css) canvas.style.filter = ST.css;
 
@@ -1125,21 +1146,51 @@ function animBiped(m, phase, moving, act, actKind) {
 }
 
 /* ---------------- druid forms ---------------- */
-function buildBeast(kind, tint) {
+// Druid forms look different for every race. `accent` is the hero's hair colour.
+const BEAST_LOOK = {
+  elf: { cat: { fur: 0x5a4a9a, belly: 0xb8b0e8, eye: 0xd8e8ff, glow: true }, bear: { fur: 0x3a3a72, belly: 0x8a8ac8, eye: 0xd8e8ff, glow: true } },
+  dwarf: { cat: { fur: 0xb08050, belly: 0xe8d0a8, eye: 0x6ad84a }, bear: { fur: 0x6a4a30, belly: 0xb08a62, eye: 0x7a4a2a } },
+  fishfolk: { cat: { fur: 0x3ab0b0, belly: 0xb8f0e8, eye: 0xffe066, glow: true }, bear: { fur: 0x2a7a8a, belly: 0x9ae0d8, eye: 0xffe066, glow: true } },
+  undead: { cat: { fur: 0x7a8a7a, belly: 0x4a544a, eye: 0x7aff8a, glow: true }, bear: { fur: 0x4a5a4a, belly: 0x2e362e, eye: 0x7aff8a, glow: true } },
+};
+function buildBeast(kind, race = 'elf', accent = 0xffffff) {
   const mats = [], M = (c, o) => { const m = toon(c, o); mats.push(m); return m; };
-  const bear = kind === 'bear', fur = M(bear ? 0x7a5236 : 0x2e2a44), belly = M(bear ? 0xb08a62 : 0x4a4466);
+  const L = (BEAST_LOOK[race] || BEAST_LOOK.elf)[kind], bear = kind === 'bear';
+  const fur = M(L.fur), belly = M(L.belly), acc = M(accent), bone = M(0xeee6d4);
   const g = new THREE.Group(), b = new THREE.Group(); g.add(b);
   const body = mesh(G.sph(bear ? 0.95 : 0.55, 16, 12), fur, 0, bear ? 1.5 : 0.95, 0); body.scale.set(bear ? 1 : 0.85, bear ? 0.85 : 0.75, bear ? 1.35 : 1.6); b.add(body);
-  if (bear) { const hump = mesh(G.sph(0.7, 12, 10), fur, 0, 2.05, 0.35); b.add(hump); }
+  b.add(mesh(G.sph(bear ? 0.62 : 0.36, 12, 10), belly, 0, bear ? 1.25 : 0.82, bear ? 0.55 : 0.4));
+  if (bear) b.add(mesh(G.sph(0.7, 12, 10), fur, 0, 2.05, 0.35));
   const head = new THREE.Group(); head.position.set(0, bear ? 2.0 : 1.25, bear ? 1.25 : 0.95); b.add(head);
   head.add(mesh(G.sph(bear ? 0.55 : 0.36, 16, 12), fur));
   const sn = mesh(G.sph(bear ? 0.26 : 0.16, 12, 8), belly, 0, -0.12, bear ? 0.45 : 0.3); sn.scale.set(1, 0.8, 1.2); head.add(sn);
   head.add(mesh(G.sph(0.06, 8, 6), basic(0x1b1626), 0, -0.05, bear ? 0.72 : 0.48, false));
-  for (const s of [-1, 1]) { const ear = bear ? mesh(G.sph(0.16, 10, 8), fur, s * 0.38, 0.4, -0.05) : mesh(G.cone(0.13, 0.32, 4), fur, s * 0.2, 0.36, -0.05); head.add(ear); }
-  addEyes(head, bear ? 0x7a4a2a : 0x8fff6a, { size: bear ? 0.17 : 0.13, x: bear ? 0.2 : 0.13, y: 0.1, z: bear ? 0.45 : 0.3, turn: 0.35, glow: !bear, angry: true });
+  addEyes(head, L.eye, { size: bear ? 0.17 : 0.13, x: bear ? 0.2 : 0.13, y: 0.1, z: bear ? 0.45 : 0.3, turn: 0.35, glow: !!L.glow, angry: true });
+  const ear = (s, geo, y = 0) => { const e = mesh(geo, fur, s * (bear ? 0.38 : 0.2), (bear ? 0.4 : 0.36) + y, -0.05); head.add(e); return e; };
+  if (race === 'elf') {
+    for (const s of [-1, 1]) { const e = ear(s, G.cone(bear ? 0.14 : 0.1, bear ? 0.5 : 0.48, 4), 0.08); e.rotation.z = s * -0.25; }
+    const moon = mesh(new THREE.TorusGeometry(bear ? 0.14 : 0.09, 0.025, 6, 16, Math.PI * 1.3), basic(0xe8f0ff), 0, bear ? 0.3 : 0.2, bear ? 0.48 : 0.32, false); moon.rotation.z = 0.6; head.add(moon);
+    if (bear) for (const s of [-1, 1]) { const a = mesh(G.cyl(0.04, 0.06, 0.6, 5), M(0xd8d0e8), s * 0.25, 0.65, -0.1); a.rotation.z = s * -0.5; head.add(a); const t = mesh(G.cyl(0.03, 0.04, 0.3, 5), M(0xd8d0e8), s * 0.45, 0.85, -0.1); t.rotation.z = s * 0.5; head.add(t); }
+    else for (let i = 0; i < 4; i++) b.add(mesh(G.box(0.62, 0.05, 0.1), acc, 0, 1.25, 0.5 - i * 0.35));
+  } else if (race === 'dwarf') {
+    for (const s of [-1, 1]) { ear(s, bear ? G.sph(0.17, 10, 8) : G.cone(0.13, 0.32, 4)); if (!bear) head.add(mesh(G.cone(0.03, 0.18, 4), acc, s * 0.2, 0.6, -0.05)); }
+    const ruff = mesh(G.sph(bear ? 0.5 : 0.3, 12, 8), acc, 0, bear ? -0.35 : -0.25, bear ? 0.2 : 0.1); ruff.scale.set(1.2, 0.7, 0.8); head.add(ruff);
+    if (bear) for (let i = 0; i < 4; i++) b.add(mesh(new THREE.DodecahedronGeometry(0.38, 0), M(0x8a8a92), (i % 2 - 0.5) * 0.5, 2.35, 0.6 - i * 0.45));
+  } else if (race === 'fishfolk') {
+    for (const s of [-1, 1]) { const f = mesh(G.cone(bear ? 0.22 : 0.14, bear ? 0.5 : 0.36, 3), acc, s * (bear ? 0.42 : 0.24), bear ? 0.2 : 0.2, -0.05); f.scale.set(0.25, 1, 1); f.rotation.z = s * -1.1; head.add(f); }
+    const fin = mesh(G.cone(bear ? 0.5 : 0.3, bear ? 0.9 : 0.6, 3), acc, 0, bear ? 2.5 : 1.35, bear ? 0.1 : 0.1); fin.scale.set(0.15, 1, 1.4); b.add(fin);
+    if (bear) for (let i = 0; i < 3; i++) b.add(mesh(G.sph(0.32, 10, 6), M(0xe8834a), (i - 1) * 0.55, 1.95, -0.6));
+  } else {
+    for (const s of [-1, 1]) ear(s, bear ? G.sph(0.15, 8, 6) : G.cone(0.12, 0.34, 4));
+    for (let i = 0; i < 4; i++) { const r = mesh(G.box(bear ? 1.5 : 0.9, 0.05, 0.06), bone, 0, bear ? 1.2 : 0.75, bear ? 0.4 - i * 0.3 : 0.3 - i * 0.25); r.rotation.x = 0.3; b.add(r); }
+    if (bear) for (let i = 0; i < 5; i++) { const sp = mesh(G.cone(0.12, 0.55, 5), bone, 0, 2.35, 0.8 - i * 0.4); sp.rotation.x = -0.4; b.add(sp); }
+    const jaw = mesh(G.box(bear ? 0.5 : 0.3, 0.06, 0.1), bone, 0, -0.22, bear ? 0.55 : 0.36); head.add(jaw);
+  }
   const legs = []; const lw = bear ? 0.24 : 0.12, lh = bear ? 1.0 : 0.75;
-  for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) { const p = new THREE.Group(); p.position.set(sx * (bear ? 0.5 : 0.24), lh + 0.08, sz * (bear ? 0.75 : 0.62)); p.add(mesh(G.cyl(lw, lw * 0.9, lh, 10), fur, 0, -lh / 2, 0)); b.add(p); legs.push(p); }
-  if (!bear) { const tail = mesh(G.cyl(0.06, 0.04, 1.2, 6), fur, 0, 1.2, -1.35); tail.rotation.x = -0.7; b.add(tail); }
+  for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) { const p = new THREE.Group(); p.position.set(sx * (bear ? 0.5 : 0.24), lh + 0.08, sz * (bear ? 0.75 : 0.62)); p.add(mesh(G.cyl(lw, lw * 0.9, lh, 10), fur, 0, -lh / 2, 0), mesh(G.sph(lw * 1.1, 8, 6), belly, 0, -lh, 0.04)); b.add(p); legs.push(p); }
+  if (!bear) { const tail = mesh(G.cyl(0.06, 0.04, 1.2, 6), fur, 0, 1.2, -1.35); tail.rotation.x = -0.7; b.add(tail);
+    if (race === 'elf' || race === 'dwarf') b.add(mesh(G.sph(0.1, 8, 6), acc, 0, 1.62, -1.85)); if (race === 'fishfolk') { const tf = mesh(G.cone(0.25, 0.4, 3), acc, 0, 1.62, -1.9); tf.scale.set(0.2, 1, 1); b.add(tf); } }
+  else b.add(mesh(G.sph(0.18, 8, 6), fur, 0, 1.6, -1.25));
   bake(g); outline(g, 0.03); g.visible = false; scene.add(g);
   return { g, b, head, legs, mats, body };
 }
@@ -1268,11 +1319,58 @@ const MODELS = {
     const legs = [legPivot(b, -0.13, 0.45, 0, 0.07, 0.45, m), legPivot(b, 0.13, 0.45, 0, 0.07, 0.45, m)];
     return { g, flash: [m], parts: { head, legs, b }, kind: 'small', h: 1.7 };
   },
+  shroom(def) {
+    const g = new THREE.Group(), cap = toon(def.color), stem = toon(def.color2 || 0xfff0dc), b = new THREE.Group(); g.add(b);
+    const st = mesh(G.cyl(0.32, 0.42, 0.9, 12), stem, 0, 0.75, 0); b.add(st);
+    const c = mesh(new THREE.SphereGeometry(0.85, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), cap, 0, 1.15, 0); c.scale.y = 0.75; b.add(c);
+    const sp = toon(0xffffff); for (let i = 0; i < 6; i++) { const a = i * 1.05, r = 0.55; b.add(mesh(G.sph(0.11, 8, 6), sp, Math.cos(a) * r, 1.5, Math.sin(a) * r)); }
+    const face = new THREE.Group(); face.position.set(0, 0.85, 0); b.add(face); addEyes(face, 0x2a1a2a, { size: 0.2, x: 0.13, y: 0, z: 0.36, turn: 0.35, angry: !!def.angry });
+    const legs = [legPivot(b, -0.18, 0.3, 0, 0.1, 0.3, stem), legPivot(b, 0.18, 0.3, 0, 0.1, 0.3, stem)];
+    return { g, flash: [cap], parts: { legs, b }, kind: 'small', h: 1.8 };
+  },
+  bat(def) {
+    const g = new THREE.Group(), m = toon(def.color), w = toon(def.color2 || 0x3a2a4a, { side: THREE.DoubleSide }), b = new THREE.Group(); g.add(b); b.position.y = 2.2;
+    b.add(mesh(G.sph(0.4, 12, 10), m));
+    const head = new THREE.Group(); head.position.set(0, 0.35, 0.3); b.add(head); head.add(mesh(G.sph(0.3, 12, 10), m));
+    for (const s of [-1, 1]) { const e = mesh(G.cone(0.1, 0.32, 4), m, s * 0.17, 0.3, 0); e.rotation.z = s * -0.3; head.add(e); }
+    addEyes(head, 0xff3a3a, { size: 0.13, x: 0.1, y: 0.02, z: 0.26, turn: 0.35, angry: true, glow: true });
+    const wings = []; for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 0.3, 0.1, 0); const wm = mesh(G.box(1.3, 0.04, 0.7), w, s * 0.65, 0, -0.05); wm.userData.noOutline = true; p.add(wm); b.add(p); wings.push(p); }
+    return { g, flash: [m], parts: { b, wings, base: 2.2 }, kind: 'flyer', h: 3 };
+  },
+  bird(def) {
+    const g = new THREE.Group(), m = toon(def.color), m2 = toon(def.color2 || 0xffffff), b = new THREE.Group(); g.add(b); b.position.y = 2.4;
+    const body = mesh(G.sph(0.5, 14, 10), m); body.scale.set(0.9, 0.9, 1.3); b.add(body); b.add(mesh(G.sph(0.35, 12, 8), m2, 0, -0.1, 0.3));
+    const head = new THREE.Group(); head.position.set(0, 0.45, 0.55); b.add(head); head.add(mesh(G.sph(0.3, 12, 10), m));
+    const beak = mesh(G.cone(0.09, 0.3, 6), toon(0xffb03a), 0, -0.05, 0.32); beak.rotation.x = Math.PI / 2; head.add(beak);
+    addEyes(head, def.eye || 0xffd23a, { size: 0.14, x: 0.12, y: 0.05, z: 0.24, turn: 0.4, angry: true, glow: !!def.glowEyes });
+    const wings = []; for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 0.4, 0.1, 0); const wm = mesh(G.box(1.5, 0.06, 0.8), m, s * 0.75, 0, 0); p.add(wm); const tip = mesh(G.box(0.6, 0.05, 0.5), m2, s * 1.5, 0, -0.15); p.add(tip); b.add(p); wings.push(p); }
+    const tail = mesh(G.box(0.5, 0.05, 0.6), m2, 0, 0, -0.75); tail.rotation.x = 0.3; b.add(tail);
+    if (def.flame) { const f = mesh(G.sph(0.8, 10, 8), glow(0xff7a2a, 0.3), 0, 0, 0, false); f.userData.noOutline = true; b.add(f); }
+    return { g, flash: [m], parts: { b, wings, base: 2.4 }, kind: 'flyer', h: 3.2 };
+  },
+  serpent(def) {
+    const g = new THREE.Group(), m = toon(def.color), m2 = toon(def.color2), b = new THREE.Group(); g.add(b);
+    const segs = []; for (let i = 0; i < 7; i++) { const r = 0.42 - i * 0.04; const sg = mesh(G.sph(r, 12, 10), i % 2 ? m2 : m, 0, r, -i * 0.55); b.add(sg); segs.push(sg); }
+    const head = new THREE.Group(); head.position.set(0, 1.25, 0.45); b.add(head);
+    const hs = mesh(G.sph(0.42, 14, 10), m); hs.scale.set(1, 0.8, 1.3); head.add(hs);
+    b.add(mesh(G.cyl(0.32, 0.4, 0.9, 10), m, 0, 0.75, 0.25));
+    const hood = mesh(G.sph(0.6, 12, 8), m2, 0, 0.05, -0.2); hood.scale.set(1.3, 1, 0.3); head.add(hood);
+    addEyes(head, 0xffe04a, { size: 0.16, x: 0.16, y: 0.08, z: 0.4, turn: 0.4, angry: true, glow: true });
+    for (const s of [-1, 1]) { const f = mesh(G.cone(0.04, 0.2, 5), toon(0xffffff), s * 0.1, -0.2, 0.42); f.rotation.x = Math.PI; head.add(f); }
+    return { g, flash: [m], parts: { b, segs, head }, kind: 'snake', h: 1.9 };
+  },
+  scorpion(def) {
+    const r = MODELS.crab(def); const m = r.flash[0], b = r.parts.b;
+    const tail = new THREE.Group(); tail.position.set(0, 0.9, -0.7); b.add(tail);
+    for (let i = 0; i < 5; i++) { const sg = mesh(G.sph(0.24 - i * 0.02, 10, 8), m, 0, i * 0.32, -i * 0.12 + (i > 2 ? (i - 2) * 0.28 : 0)); tail.add(sg); }
+    const st = mesh(G.cone(0.12, 0.45, 6), toon(0x2a1a1a), 0, 1.45, 0.75); st.rotation.x = 2.2; tail.add(st);
+    r.parts.tail = tail; r.h = 2.4; return r;
+  },
   golem(def) {
-    const g = new THREE.Group(), m = toon(def.color), em = basic(0xff6a2a), b = new THREE.Group(); g.add(b);
+    const g = new THREE.Group(), m = toon(def.color), em = basic(def.core || 0xff6a2a), b = new THREE.Group(); g.add(b);
     const torso = mesh(new THREE.DodecahedronGeometry(1.3, 0), m, 0, 3.4, 0); torso.scale.set(1.1, 1, 0.8); b.add(torso);
     const core = mesh(new THREE.OctahedronGeometry(0.5), em, 0, 3.5, 0.95, false); core.userData.keep = true; b.add(core);
-    const cg = mesh(G.sph(0.9, 10, 8), glow(0xff7a2a, 0.3), 0, 3.5, 0.9, false); cg.userData.noOutline = true; b.add(cg);
+    const cg = mesh(G.sph(0.9, 10, 8), glow(def.core || 0xff7a2a, 0.3), 0, 3.5, 0.9, false); cg.userData.noOutline = true; b.add(cg);
     const head = mesh(new THREE.DodecahedronGeometry(0.6, 0), m, 0, 5.0, 0.1); b.add(head);
     for (const s of [-1, 1]) head.add(mesh(G.box(0.2, 0.1, 0.05), em, s * 0.22, 0.05, 0.52, false));
     const arms = []; for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 1.75, 4.3, 0); p.add(mesh(new THREE.DodecahedronGeometry(0.55, 0), m, 0, -0.5, 0), mesh(new THREE.DodecahedronGeometry(0.5, 0), m, 0, -1.4, 0), mesh(new THREE.DodecahedronGeometry(0.7, 0), m, 0, -2.3, 0)); b.add(p); arms.push(p); }
@@ -1305,7 +1403,9 @@ function animMob(e, dt, moving, speed) {
     if (p.core) p.core.rotation.y += dt * 2;
   }
   else if (k === 'float') { p.b.position.y = 1.6 + Math.sin(e.anim) * 0.2; p.b.scale.setScalar(1 + wind * 0.3); }
-  else if (k === 'crab') { p.legs.forEach((l, i) => { l.rotation.z = moving ? Math.sin(e.anim * 2 + i) * 0.3 : 0; }); p.arms.forEach((a) => { a.rotation.x = -wind * 1.1; }); }
+  else if (k === 'crab') { p.legs.forEach((l, i) => { l.rotation.z = moving ? Math.sin(e.anim * 2 + i) * 0.3 : 0; }); p.arms.forEach((a) => { a.rotation.x = -wind * 1.1; }); if (p.tail) p.tail.rotation.x = -wind * 0.8 + Math.sin(e.anim) * 0.05; }
+  else if (k === 'flyer') { p.b.position.y = p.base + Math.sin(e.anim * 0.9) * 0.25 - wind * 0.8; p.b.position.z = wind * 0.8; const f = Math.sin(e.anim * (moving ? 4 : 2.5)) * 0.7; p.wings[0].rotation.z = f; p.wings[1].rotation.z = -f; }
+  else if (k === 'snake') { const amp = moving ? 0.35 : 0.12; p.segs.forEach((sg, i) => { sg.position.x = Math.sin(e.anim * 1.4 - i * 0.8) * amp * (i / 3 + 0.3); }); p.head.position.y = 1.25 + wind * 0.4; p.head.rotation.x = -wind * 0.5; }
   else if (k === 'small') { p.legs[0].rotation.x = moving ? s * 0.8 : 0; p.legs[1].rotation.x = moving ? -s * 0.8 : 0; p.b.position.y = Math.abs(Math.sin(e.anim)) * 0.1; }
 }
 
@@ -1450,6 +1550,16 @@ const MOBS = {
   imp: { name: 'Cinder Imp', model: 'imp', color: 0xd83a2a, lv: [17, 19], hp: 0.8, ranged: true, proj: 0xff8a3a, range: 13, speed: 5, aggro: 16, junk: 'Smoldering Ash' },
   skeleton: { name: 'Ashen Skeleton', model: 'biped', hero: { race: 'undead', skinColor: 0xeee6d4, eyeColor: 0xff5a3a, glowEyes: true, style: -1, outfit: { top: 0x5a5048, trim: 0x3a3430, pants: 0x3a3430, boots: 0x2a2420, cape: null, scarf: null, robe: false }, weapon: 'axe' }, lv: [18, 20], speed: 4.5, aggro: 15, range: 2.6, junk: 'Ashen Bone' },
   hound: { name: 'Magma Hound', model: 'quad', color: 0x3a2a28, color2: 0x6a3a2a, eye: 0xffa03a, glowEyes: true, ember: true, lv: [19, 21], speed: 6.5, aggro: 17, junk: 'Charred Claw' },
+  shroom: { name: 'Bloomcap Shroomling', model: 'shroom', color: 0xff7a8a, color2: 0xfff0dc, lv: [2, 4], hp: 0.9, speed: 3.4, aggro: 11, junk: 'Soggy Cap' },
+  sharpshooter: { name: 'Bandit Sharpshooter', model: 'biped', hero: Object.assign({}, BANDIT_LOOK, { weapon: 'bow', outfit: Object.assign({}, BANDIT_LOOK.outfit, { top: 0x6a5a3a }) }), lv: [4, 6], hp: 0.8, ranged: true, proj: 0xc9a86a, range: 15, aggro: 17, junk: 'Frayed Bowstring', human: true },
+  bat: { name: 'Duskwing Bat', model: 'bat', color: 0x5a4a7a, color2: 0x3a2a4a, lv: [7, 9], hp: 0.85, speed: 5.5, aggro: 15, junk: 'Bat Fang' },
+  dryad: { name: 'Thornbound Dryad', model: 'biped', hero: { race: 'elf', sex: 'female', skinColor: 0x8ac87a, hairColor: 0x3a8a3a, eyeColor: 0xffe04a, glowEyes: true, style: 1, outfit: { top: 0x4a7a3a, trim: 0x8a5a2a, pants: 0x3a5a2a, boots: 0x3a2a1a, cape: null, scarf: null, robe: true }, weapon: 'staff' }, lv: [8, 10], ranged: true, proj: 0x7ae05a, range: 15, aggro: 16, junk: 'Withered Leaf', human: true },
+  serpent: { name: 'Mire Serpent', model: 'serpent', color: 0x4a8a3a, color2: 0xd8c85a, lv: [10, 13], speed: 4.5, aggro: 14, range: 2.6, junk: 'Shed Skin' },
+  bogshroom: { name: 'Bogshroom', model: 'shroom', color: 0x8a5ab0, color2: 0xc8d0a0, angry: true, lv: [9, 11], hp: 1.1, speed: 3, aggro: 12, junk: 'Rotting Cap' },
+  owl: { name: 'Snowwing Owl', model: 'bird', color: 0xf0f4fa, color2: 0xb8c8e0, eye: 0xffc83a, lv: [13, 15], speed: 6, aggro: 15, junk: 'Owl Pellet' },
+  frostgolem: { name: 'Frost Golem', model: 'golem', color: 0x9ab8d8, core: 0x7ad8ff, lv: [15, 17], hp: 1.8, dmg: 1.4, speed: 3, range: 4, aggro: 13, scale: 0.5, junk: 'Melting Ice' },
+  scorpion: { name: 'Ash Scorpion', model: 'scorpion', color: 0x7a4a32, color2: 0x5a3020, lv: [18, 20], hp: 1.2, speed: 4.5, aggro: 14, junk: 'Cracked Carapace' },
+  phoenix: { name: 'Cinder Phoenix', model: 'bird', color: 0xff6a2a, color2: 0xffd04a, eye: 0xffffff, glowEyes: true, flame: true, lv: [19, 21], ranged: true, proj: 0xff8a3a, range: 14, speed: 6, aggro: 16, junk: 'Smoldering Feather' },
   cgolem: { name: 'Cinder Golem', model: 'golem', color: 0x5a4a44, lv: [20, 22], hp: 2, dmg: 1.5, speed: 3, range: 4, aggro: 14, scale: 0.55, junk: 'Cooling Slag' },
 };
 // Named elites and bosses. `base` copies the look of a normal monster.
@@ -1463,6 +1573,16 @@ const NAMED = {
   frostmaw: { base: 'yeti', name: 'Frostmaw', lvl: 16, elite: true, scale: 1.3, color2: 0x4a6aa8, place: 'yetiCaves', respawn: 150 },
   rimefang: { base: 'frostwolf', name: 'Rimefang', lvl: 18, boss: true, scale: 2.5, place: 'rimeHollow', special: 'spit', respawn: 300 },
   scorchjaw: { base: 'hound', name: 'Scorchjaw', lvl: 21, elite: true, scale: 1.6, place: 'impFlats', respawn: 150 },
+  enforcer: { base: 'bandit', name: 'Enforcer Krug', lvl: 7, elite: true, dungeon: true, scale: 1.4, hero: Object.assign({}, BANDIT_LOOK, { weapon: 'axe' }) },
+  redfang: { base: 'bandit', name: 'Captain Redfang', lvl: 8, boss: true, dungeon: true, scale: 1.6, adds: 'bandit', hero: Object.assign({}, BANDIT_LOOK, { crown: true, weapon: 'sword', hairColor: 0xe0483a, outfit: Object.assign({}, BANDIT_LOOK.outfit, { top: 0x2a1a3a, cape: 0xd8394a }) }) },
+  webguard: { base: 'spider', name: 'Silkguard Venomfang', lvl: 11, elite: true, dungeon: true, scale: 1.6, color: 0x2a4a2a },
+  aranea: { base: 'spider', name: 'Broodmother Aranea', lvl: 12, boss: true, dungeon: true, scale: 2.6, color: 0x6a1a4a, color2: 0x2a0a2a, special: 'spit', adds: 'spider' },
+  templeguard: { base: 'lurker', name: 'Temple Guardian', lvl: 14, elite: true, dungeon: true, scale: 1.5, color: 0x3a6a8a },
+  hydra: { base: 'serpent', name: 'Hydra of the Deep', lvl: 15, boss: true, dungeon: true, scale: 2.6, color: 0x2a5a7a, color2: 0x8ad0c8, adds: 'serpent' },
+  bonewarden: { base: 'skeleton', name: 'Bonewarden', lvl: 18, elite: true, dungeon: true, scale: 1.45 },
+  frostlich: { base: 'wraith', name: 'The Frost Lich', lvl: 19, boss: true, dungeon: true, scale: 2, color: 0x6a8ad8, eye: 0x9fe8ff, special: 'spit', adds: 'wraith' },
+  magmaw: { base: 'hound', name: 'Magmaw', lvl: 22, elite: true, dungeon: true, scale: 1.7 },
+  ignaroth: { base: 'cgolem', name: 'Pyrelord Ignaroth', lvl: 24, boss: true, dungeon: true, scale: 2.2, adds: 'imp' },
   embergolem: { base: 'cgolem', name: 'The Ember Golem', lvl: 23, boss: true, scale: 1.9, place: 'moltenRuins', respawn: 300 },
 };
 const SPAWNS = [
@@ -1470,6 +1590,11 @@ const SPAWNS = [
   ['spider', 'silkHollow', 8, 60], ['spider', 'wood', 8], ['wisp', 'oldGrove', 10, 50], ['treant', 'wood', 10], ['cultist', 'cultCamp', 10, 30],
   ['crab', 'crabShore', 14, 55], ['lurker', 'lurkerReeds', 12, 55], ['toad', 'marsh', 11],
   ['frostwolf', 'frost', 14], ['wraith', 'wraithField', 10, 55], ['yeti', 'yetiCaves', 9, 50],
+  ['shroom', 'slimeMeadow', 8, 60], ['shroom', 'vale', 6], ['sharpshooter', 'banditCamp', 6, 30],
+  ['bat', 'duskHollow', 10, 45], ['dryad', 'dryadGlade', 9, 40],
+  ['serpent', 'serpentBank', 12, 45], ['bogshroom', 'marsh', 10],
+  ['owl', 'frost', 10], ['frostgolem', 'frostQuarry', 8, 40],
+  ['scorpion', 'scorchDunes', 11, 45], ['phoenix', 'cinder', 8],
   ['imp', 'impFlats', 13, 55], ['skeleton', 'boneYard', 12, 50], ['hound', 'cinder', 10], ['cgolem', 'moltenRuins', 7, 60],
 ];
 
@@ -1560,6 +1685,32 @@ Q('q_ore', 'dorn', 19, 'Cinder Ore', 'There\'s ore all over the waste, glowing o
 Q('q_scorch', 'varr', 20, 'Wanted: Scorchjaw', 'The alpha magma hound, Scorchjaw, hunts the imp flats. It killed my best scout. End it.', [K('scorchjaw', 1)], { req: ['q_imps'], reward: 'blue', xpMul: 1.5, done: 'You avenged her. Thank you.' });
 Q('q_golems', 'ilsa', 20, 'Golem Fragments', 'Cinder golems guard the road to the Molten Ruins. Break seven of them to open the way.', [K('cgolem', 7)], { req: ['q_bones'], done: 'The road to the ruins is open.' });
 Q('q_ember', 'varr', 22, 'The Ember Golem', 'At the heart of the Molten Ruins stands the Ember Golem, the source of all this fire. It slams the ground and the earth burns. Bring potions, watch the ground, and destroy it.', [K('embergolem', 1)], { req: ['q_golems', 'q_cores'], reward: 'epic', xpMul: 3, done: 'The fire is going out all across the waste. You\'re a legend now, {name}.' });
+// ---- more quests (2.2) ----
+Q('q_shrooms', 'hobb', 3, 'Mushroom Menace', 'Walking mushrooms! In my turnip patch! They pop up in the meadows north of the village. Stomp six of them.', [K('shroom', 6)], { done: 'Ha! My turnips are safe. For now.' });
+Q('q_spores', 'maren', 4, 'Glowing Spores', 'The shroomlings carry bright spores that make a wonderful sleeping draught. Bring me five.', [L('shroom', 'Bright Spore', 5, 0.6)], { req: ['q_slimes'], done: 'These will help the sick children sleep. Thank you.' });
+Q('q_snipers', 'brannoc', 5, 'Eyes in the Trees', 'Bandit sharpshooters are picking off travelers from the trees around their camp. Take out five of them.', [K('sharpshooter', 5)], { req: ['q_bandits'], done: 'The roads are a little safer now.' });
+Q('q_pelts_v', 'pell', 4, 'A Merchant\'s Favor', 'Wolf pelts sell like hotcakes in the city. Bring me six from the wolves southeast of here and I\'ll make it worth your while.', [L('wolf', 'Wolf Pelt', 6, 0.55)], { done: 'Beautiful! These will fetch a fine price.' });
+Q('q_dun1', 'brannoc', 7, 'The Bandit Hideout', 'Gorrak was only the front man. The real leader, Captain Redfang, hides in a cave east of the bandit camp. Take a group if you can, or go in carefully. End this for good.', [K('redfang', 1)], { req: ['q_gorrak'], reward: 'blue', xpMul: 2.5, done: 'Redfang is finished? Then the bandits are broken. You\'re a hero, {name}.' });
+Q('q_bats', 'kael', 8, 'Wings in the Dark', 'Giant bats nest in Dusk Hollow, north of town. They swarm anyone who walks the north path at night. Kill eight.', [K('bat', 8)], { done: 'The north path is quiet again.' });
+Q('q_wings', 'fen', 8, 'Bat Wing Tonic', 'Leathery bat wings make a bitter tonic that cures night blindness. Six, please.', [L('bat', 'Leathery Wing', 6, 0.6)], { done: 'Ugh, the smell. Perfect.' });
+Q('q_dryads', 'sylva', 9, 'Thornbound', 'The dryads of the southern glade have been twisted by the cult\'s magic. It breaks my heart, but they must be stopped. Six of them.', [K('dryad', 6)], { req: ['q_webs'], done: 'May the forest take them back gently.' });
+Q('q_seeds', 'tamsin', 9, 'Dryad Seeds', 'The dryads carry thornseeds. Planted right, they grow into the best timber you\'ve ever seen. Five, and I\'ll pay well.', [L('dryad', 'Thornseed', 5, 0.6)], { done: 'Pleasure doing business!' });
+Q('q_dun2', 'sylva', 11, 'Webwood Hollow', 'Mother Silkweaver had a daughter: Broodmother Aranea, deep in Webwood Hollow at the far west edge of the forest. Kill her before she becomes worse than her mother.', [K('aranea', 1)], { req: ['q_silkweaver'], reward: 'blue', xpMul: 2.5, done: 'The last of the brood is gone. Whisperwood can breathe again.' });
+Q('q_serpents', 'wynn', 11, 'Serpents in the Shallows', 'Mire serpents slither along the southeast bank. One took my best dog. Kill eight.', [K('serpent', 8)], { done: 'Good riddance.' });
+Q('q_scales', 'marlo', 11, 'Serpent Scales', 'Serpent scales make waterproof boots. Very popular around here. Six scales!', [L('serpent', 'Serpent Scale', 6, 0.55)], { done: 'Dry feet for everyone!' });
+Q('q_bogshroom', 'moss', 10, 'The Rotting Caps', 'Mrrgl. Bogshrooms are spreading rot through the marsh. Squash eight of them.', [K('bogshroom', 8)], { done: 'The water smells sweeter already.' });
+Q('q_bogspores', 'moss', 11, 'Bogshroom Spores', 'The rot spores can be turned into medicine. Bring Old Moss six.', [L('bogshroom', 'Rot Spore', 6, 0.6)], { req: ['q_bogshroom'], done: 'Many fevers will break because of you.' });
+Q('q_dun3', 'halden', 14, 'The Sunken Temple', 'There\'s an old temple half under the water at the far south of the marsh. Something with many heads lives inside. The Hydra of the Deep. Slay it.', [K('hydra', 1)], { req: ['q_maw'], reward: 'blue', xpMul: 2.5, done: 'The Hydra is dead! Reedwater will sing about you for a hundred years.' });
+Q('q_owls', 'brina', 14, 'Snowwing Owls', 'Snowwing owls dive at our scouts and steal their food. Thin them out: eight.', [K('owl', 8)], { done: 'The scouts send their thanks.' });
+Q('q_feathers', 'greta', 14, 'Fine Feathers', 'Snowwing feathers make the warmest pillows. Six, please!', [L('owl', 'Snowy Feather', 6, 0.6)], { done: 'Ooh, so soft!' });
+Q('q_fgolems', 'orrin', 16, 'Walking Ice', 'Frost golems have risen in the quarry west of the fort. They crush everything. Shatter six.', [K('frostgolem', 6)], { req: ['q_spirits'], done: 'The quarry can be worked again.' });
+Q('q_hearts', 'ysolde', 16, 'Frozen Hearts', 'The frost golems carry hearts of ice. Our sages can use them to strengthen the walls. Bring five.', [L('frostgolem', 'Frozen Heart', 5, 0.6)], { req: ['q_fgolems'], done: 'Frostwatch\'s walls will hold for years.' });
+Q('q_dun4', 'ysolde', 18, 'The Frozen Catacombs', 'Beneath the snows to the far north lie the Frozen Catacombs. The Frost Lich who raised the wraiths waits there. Destroy it.', [K('frostlich', 1)], { req: ['q_rimefang'], reward: 'blue', xpMul: 2.5, done: 'The Lich is gone and the dead are at rest. Thank you, {name}.' });
+Q('q_scorp', 'dorn', 18, 'Stingers', 'Ash scorpions infest the dunes south of camp. They keep stinging the pack animals. Kill eight.', [K('scorpion', 8)], { done: 'The mules are grateful. So am I.' });
+Q('q_svenom', 'zahra', 18, 'Scorpion Venom', 'Ash venom is worth its weight in gold to the right alchemist. Six glands!', [L('scorpion', 'Ash Venom Gland', 6, 0.6)], { done: 'Careful, careful... perfect.' });
+Q('q_phoenix', 'ilsa', 20, 'Rebirth in Ash', 'Cinder phoenixes are being born from the burning ground. If they gather, they\'ll set the whole waste alight. Put down six.', [K('phoenix', 6)], { done: 'The skies are clearer already.' });
+Q('q_plumes', 'ilsa', 21, 'Phoenix Plumes', 'Phoenix plumes hold the fire\'s memory. I need five to study it.', [L('phoenix', 'Ember Plume', 5, 0.6)], { req: ['q_phoenix'], done: 'Fascinating. Truly fascinating.' });
+Q('q_dun5', 'varr', 23, 'Heart of Cinder', 'The Ember Golem was a servant. Its master, Pyrelord Ignaroth, waits in the Heart of Cinder at the far east edge of the waste. This is the last fight.', [K('ignaroth', 1)], { req: ['q_ember'], reward: 'epic', xpMul: 3, done: 'Ignaroth is gone. The fire is out. Emberfall Vale is free, {name}.' });
 const QUEST = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
 const questXP = (q) => Math.round(xpNext(q.lvl) * 0.35 * (q.xpMul || 1));
 const questGold = (q) => Math.round((5 + q.lvl * 3) * (q.xpMul || 1));
@@ -1573,87 +1724,92 @@ function freshMods() { return { dmg: 0, crit: 0, haste: 0, hp: 0, armor: 0, spee
 const sd = (id, mult) => atk() * mult * (1 + (M.sdmg[id] || 0));
 
 const SK = {
+  // ---------------- basic spells (casters) ----------------
+  shadowbolt: { cost: 6, cast: 1.7, cls: 'warlock', lvl: 1, cd: 0, name: 'Shadow Bolt', color: 0x9a4dff, range: 30, desc: 'Your basic attack. Hurl a bolt of shadow at the target.',
+    use() { const t = findTarget(30); if (!t) return fail('No target in range.'); faceTo(t); playAnim('cast', 0.4); const from = handPos(); fire({ kind: 'orb', color: 0x9a4dff, size: 0.25, pos: from, dir: aimAt(t, from), speed: 26, dmg: sd('shadowbolt', 1.6) }); } },
+  wrath: { cost: 5, cast: 1.5, cls: 'druid', lvl: 1, cd: 0, inForm: 'caster', name: 'Wrath', color: 0x9fe05a, range: 30, desc: 'Caster form basic attack. Hurl a bolt of nature energy at the target.',
+    use() { const t = findTarget(30); if (!t) return fail('No target in range.'); faceTo(t); playAnim('cast', 0.4); const from = handPos(); fire({ kind: 'orb', color: 0x9fe05a, size: 0.22, pos: from, dir: aimAt(t, from), speed: 28, dmg: sd('wrath', 1.35) }); } },
   // ---------------- rogue ----------------
-  eviscerate: { cls: 'rogue', lvl: 1, cd: 6, name: 'Eviscerate', color: 0xd8394a, desc: 'A vicious strike for heavy damage.', range: 4,
+  eviscerate: { cost: 35, cls: 'rogue', lvl: 1, cd: 6, name: 'Eviscerate', color: 0xd8394a, desc: 'A vicious strike for heavy damage.', range: 4,
     use() { const t = meleeTarget(4); if (!t) return fail('Get closer to your target.'); faceTo(t); playAnim('dagger', 0.26); dealDamage(t, sd('eviscerate', 2.2), { critBonus: M.flags.coldBlood ? 1 : 0, kb: 4 }); } },
-  fan: { cls: 'rogue', lvl: 2, cd: 8, name: 'Fan of Knives', color: 0xbfc6cc, desc: 'Hurl blades in every direction, hitting all nearby enemies.',
+  fan: { cost: 40, cls: 'rogue', lvl: 2, cd: 8, name: 'Fan of Knives', color: 0xbfc6cc, desc: 'Hurl blades in every direction, hitting all nearby enemies.',
     use() { spawnRing(P.x, P.z, 0xdfe6ec, 6, 0.35); const from = handPos(); for (let i = 0; i < 12; i++) { const a = (i / 12) * 6.283; fire({ kind: 'arrow', color: 0xcfd5da, pos: from, dir: new THREE.Vector3(Math.sin(a), 0, Math.cos(a)), speed: 26, life: 0.24, noHit: true }); }
       aoe(P.x, P.z, 6, (e) => dealDamage(e, sd('fan', 1.1), { kb: 5 })); } },
-  shadowstep: { cls: 'rogue', lvl: 4, cd: 12, name: 'Shadowstep', color: 0x7a5aaa, desc: 'Teleport behind a target and strike with a guaranteed critical hit.', range: 18,
+  shadowstep: { cost: 20, cls: 'rogue', lvl: 4, cd: 12, name: 'Shadowstep', color: 0x7a5aaa, desc: 'Teleport behind a target and strike with a guaranteed critical hit.', range: 18,
     use() { const t = findTarget(18); if (!t) return fail('No target in range.'); spawnRing(P.x, P.z, 0x7a5aaa, 2.5); const dx = t.x - P.x, dz = t.z - P.z, d = Math.hypot(dx, dz) || 1, o = t.T.radius + 1.1;
       P.x = t.x + (dx / d) * o; P.z = t.z + (dz / d) * o; collide(P, 0.5); P.y = Math.max(groundAt(P.x, P.z), -1.1); faceTo(t); spawnRing(P.x, P.z, 0x7a5aaa, 2.5); playAnim('dagger', 0.26); dealDamage(t, sd('shadowstep', 1.4), { critBonus: 1, kb: 4 }); } },
   poison: { cls: 'rogue', lvl: 6, cd: 20, name: 'Poison Blades', color: 0x6fd04a, desc: 'For 12 seconds your hits poison enemies for damage over time.', use() { buff('poison', 12); toast('Your blades drip with poison.'); } },
   vanish: { cls: 'rogue', lvl: 8, cd: 30, name: 'Vanish', color: 0x3a3452, desc: 'Turn invisible for 8 seconds. Enemies lose you, and your next attack hits much harder.',
     use() { buff('stealth', 8); spawnRing(P.x, P.z, 0x5a4a6a, 3); for (const e of enemies) if (e.state === 'chase') e.state = 'return'; } },
-  kidney: { cls: 'rogue', lvl: 10, cd: 18, name: 'Kidney Shot', color: 0xe0a030, desc: 'Strike a vital spot, stunning the target for 3 seconds.', range: 4,
+  kidney: { cost: 25, cls: 'rogue', lvl: 10, cd: 18, name: 'Kidney Shot', color: 0xe0a030, desc: 'Strike a vital spot, stunning the target for 3 seconds.', range: 4,
     use() { const t = meleeTarget(4); if (!t) return fail('Get closer to your target.'); faceTo(t); playAnim('dagger', 0.26); dealDamage(t, sd('kidney', 0.8)); stun(t, 3); } },
   flurry: { cls: 'rogue', lvl: 14, cd: 35, name: 'Blade Flurry', color: 0xff6a6a, desc: 'For 8 seconds attack 40% faster and your basic attacks hit every enemy in front of you.', use() { buff('flurry', 8); } },
   dance: { cls: 'rogue', lvl: 18, cd: 45, name: 'Shadow Dance', color: 0x9a5aff, desc: 'For 8 seconds gain 40% critical strike and Shadowstep has no cooldown.', use() { buff('dance', 8); } },
   // ---------------- archer ----------------
-  multishot: { cls: 'archer', lvl: 1, cd: 6, name: 'Multi-Shot', color: 0xc9a86a, desc: 'Fire five arrows in a spread.',
+  multishot: { cost: 30, cls: 'archer', lvl: 1, cd: 6, name: 'Multi-Shot', color: 0xc9a86a, desc: 'Fire five arrows in a spread.',
     use() { const from = handPos(), t = findTarget(32); faceTo(t); const base = aimAt(t, from); playAnim('bow', 0.42);
       for (let i = -2; i <= 2; i++) fire({ kind: 'arrow', pos: from, dir: base.clone().applyAxisAngle(UP, i * 0.13), speed: 42, dmg: sd('multishot', 0.8) }); } },
-  power: { cls: 'archer', lvl: 2, cd: 9, name: 'Power Shot', color: 0xffd25a, desc: 'A huge arrow that pierces every enemy in a line.',
+  power: { cost: 40, cast: 1.4, cls: 'archer', lvl: 2, cd: 9, name: 'Power Shot', color: 0xffd25a, desc: 'A huge arrow that pierces every enemy in a line.',
     use() { const from = handPos(), t = findTarget(40); faceTo(t); playAnim('bow', 0.42); fire({ kind: 'arrow', big: true, glow: 0xffd25a, pos: from, dir: aimAt(t, from), speed: 62, dmg: sd('power', 3), pierce: true, life: 1 }); } },
   disengage: { cls: 'archer', lvl: 4, cd: 10, name: 'Disengage', color: 0x8fbf5a, desc: 'Leap backward out of danger.',
     use() { const f = facing(); P.dash = { t: 0.32, vx: -f.x * 19, vz: -f.z * 19 }; P.vy = 7.5; P.onGround = false; spawnRing(P.x, P.z, 0x8fbf5a, 2.5); } },
-  sting: { cls: 'archer', lvl: 6, cd: 3, name: 'Serpent Sting', color: 0x5ad08a, desc: 'Poison a target for heavy damage over 8 seconds.', range: 32,
+  sting: { cost: 15, cls: 'archer', lvl: 6, cd: 3, name: 'Serpent Sting', color: 0x5ad08a, desc: 'Poison a target for heavy damage over 8 seconds.', range: 32,
     use() { const t = findTarget(32); if (!t) return fail('No target in range.'); faceTo(t); playAnim('bow', 0.42); const from = handPos();
       fire({ kind: 'arrow', color: 0x5ad08a, glow: 0x5ad08a, pos: from, dir: aimAt(t, from), speed: 44, dmg: sd('sting', 0.4), onHit: (e) => addDot(e, sd('sting', 0.5), 8, 'sting') }); } },
-  rain: { cls: 'archer', lvl: 8, cd: 16, name: 'Rain of Arrows', color: 0xe08a4a, desc: 'Arrows rain on an area, hitting everything inside.',
+  rain: { cost: 50, cls: 'archer', lvl: 8, cd: 16, name: 'Rain of Arrows', color: 0xe08a4a, desc: 'Arrows rain on an area, hitting everything inside.',
     use() { const t = findTarget(32), f = facing(); const cx = t ? t.x : P.x + f.x * 10, cz = t ? t.z : P.z + f.z * 10; faceTo(t); playAnim('bow', 0.42); spawnRing(cx, cz, 0xe08a4a, 6, 0.9); const gy = groundAt(cx, cz);
       for (let i = 0; i < 18; i++) { const a = rand(0, 6.283), r = rand(0, 5.5); fire({ kind: 'arrow', pos: new THREE.Vector3(cx + Math.cos(a) * r, gy + 16 + rand(0, 4), cz + Math.sin(a) * r), dir: new THREE.Vector3(rand(-0.05, 0.05), -1, rand(-0.05, 0.05)).normalize(), speed: 32, life: 1.2, noHit: true }); }
       after(0.5, () => aoe(cx, cz, 6, (e) => dealDamage(e, sd('rain', 1.7)))); } },
-  concuss: { cls: 'archer', lvl: 10, cd: 14, name: 'Concussive Shot', color: 0x7a9ad8, desc: 'A heavy blunt arrow that stuns the target for 2.5 seconds.', range: 32,
+  concuss: { cost: 20, cls: 'archer', lvl: 10, cd: 14, name: 'Concussive Shot', color: 0x7a9ad8, desc: 'A heavy blunt arrow that stuns the target for 2.5 seconds.', range: 32,
     use() { const t = findTarget(32); if (!t) return fail('No target in range.'); faceTo(t); playAnim('bow', 0.42); const from = handPos(); fire({ kind: 'arrow', color: 0x7a9ad8, pos: from, dir: aimAt(t, from), speed: 50, dmg: sd('concuss', 1), onHit: (e) => stun(e, 2.5) }); } },
   rapid: { cls: 'archer', lvl: 14, cd: 40, name: 'Rapid Fire', color: 0xff9a3a, desc: 'For 10 seconds shoot 60% faster.', use() { buff('rapid', 10); } },
   wolfpet: { cls: 'archer', lvl: 18, cd: 60, name: 'Spirit Wolf', color: 0x7ac8ff, desc: 'Call a spirit wolf to fight beside you for 40 seconds.', use() { summonPet('wolf', M.flags.packLeader ? 0 : 40); } },
   // ---------------- warlock ----------------
-  corruption: { cls: 'warlock', lvl: 1, cd: 2, name: 'Corruption', color: 0x8a3ad0, desc: 'Curse a target with shadow damage over 10 seconds.', range: 28,
+  corruption: { cost: 8, cls: 'warlock', lvl: 1, cd: 2, name: 'Corruption', color: 0x8a3ad0, desc: 'Curse a target with shadow damage over 10 seconds.', range: 28,
     use() { const t = findTarget(28); if (!t) return fail('No target in range.'); faceTo(t); playAnim('cast', 0.4); addDot(t, sd('corruption', 0.45), 10, 'shadow'); aggro(t); spawnRing(t.x, t.z, 0x8a3ad0, 2); } },
-  drain: { cls: 'warlock', lvl: 2, cd: 8, name: 'Drain Life', color: 0x5ad08a, desc: 'Rip the life out of a target and heal yourself for the damage dealt.', range: 25,
+  drain: { cost: 12, cls: 'warlock', lvl: 2, cd: 8, name: 'Drain Life', color: 0x5ad08a, desc: 'Rip the life out of a target and heal yourself for the damage dealt.', range: 25,
     use() { const t = findTarget(25); if (!t) return fail('No target in range.'); faceTo(t); playAnim('cast', 0.4); spawnBeam(handPos(), new THREE.Vector3(t.x, t.y + t.cy, t.z), 0x7ae08a, 0.45); const d = dealDamage(t, sd('drain', 1.8)); heal(d * (M.flags.soulSiphon ? 2 : 1)); } },
-  imp: { cls: 'warlock', lvl: 4, cd: 30, name: 'Summon Imp', color: 0xe0502a, desc: 'Call a fiery imp that fights beside you for 45 seconds.', use() { summonPet('imp', M.flags.demonLord ? 0 : 45); } },
-  immolate: { cls: 'warlock', lvl: 6, cd: 6, name: 'Immolate', color: 0xff7a2a, desc: 'Burn a target, then keep it burning for 6 seconds.', range: 28,
+  imp: { cost: 20, cls: 'warlock', lvl: 4, cd: 30, name: 'Summon Imp', color: 0xe0502a, desc: 'Call a fiery imp that fights beside you for 45 seconds.', use() { summonPet('imp', M.flags.demonLord ? 0 : 45); } },
+  immolate: { cost: 10, cast: 1.2, cls: 'warlock', lvl: 6, cd: 6, name: 'Immolate', color: 0xff7a2a, desc: 'Burn a target, then keep it burning for 6 seconds.', range: 28,
     use() { const t = findTarget(28); if (!t) return fail('No target in range.'); faceTo(t); playAnim('cast', 0.4); spawnRing(t.x, t.z, 0xff7a2a, 2.5); dealDamage(t, sd('immolate', 0.8)); if (!t.dead) addDot(t, sd('immolate', 0.4), 6, 'fire'); } },
-  shadowfury: { cls: 'warlock', lvl: 8, cd: 16, name: 'Shadowfury', color: 0x5a2a8a, desc: 'Blast an area with shadow, damaging and stunning enemies for 2.5 seconds.',
+  shadowfury: { cost: 15, cls: 'warlock', lvl: 8, cd: 16, name: 'Shadowfury', color: 0x5a2a8a, desc: 'Blast an area with shadow, damaging and stunning enemies for 2.5 seconds.',
     use() { const t = findTarget(25), f = facing(); const cx = t ? t.x : P.x + f.x * 7, cz = t ? t.z : P.z + f.z * 7; faceTo(t); playAnim('cast2', 0.5); spawnRing(cx, cz, 0x9a4dff, 6, 0.6); aoe(cx, cz, 6, (e) => { dealDamage(e, sd('shadowfury', 1.4)); stun(e, 2.5); }); } },
-  fear: { cls: 'warlock', lvl: 10, cd: 20, name: 'Fear', color: 0x3a1a5a, desc: 'Terrify a target so it runs away for 5 seconds.', range: 25,
+  fear: { cost: 10, cast: 1.2, cls: 'warlock', lvl: 10, cd: 20, name: 'Fear', color: 0x3a1a5a, desc: 'Terrify a target so it runs away for 5 seconds.', range: 25,
     use() { const t = findTarget(25); if (!t) return fail('No target in range.'); faceTo(t); playAnim('cast', 0.4); if (t.boss) return fail('Bosses are immune to fear.'); t.fearT = 5; aggro(t); floatText('Feared', t.x, t.y + t.h + 0.5, t.z, 'dot'); } },
-  chaos: { cls: 'warlock', lvl: 14, cd: 14, name: 'Chaos Bolt', color: 0x5aff8a, desc: 'A slow bolt of chaos that always critically strikes.', range: 30,
+  chaos: { cost: 18, cast: 2.0, cls: 'warlock', lvl: 14, cd: 14, name: 'Chaos Bolt', color: 0x5aff8a, desc: 'A slow bolt of chaos that always critically strikes.', range: 30,
     use() { const t = findTarget(30); if (!t) return fail('No target in range.'); faceTo(t); playAnim('cast2', 0.5); const from = handPos();
       fire({ kind: 'orb', color: 0x5aff8a, size: 0.45, pos: from, dir: aimAt(t, from), speed: 16, dmg: 0, life: 3, onHit: (e) => dealDamage(e, sd('chaos', 2.6), { critBonus: 1 }) }); } },
-  infernal: { cls: 'warlock', lvl: 18, cd: 90, name: 'Summon Infernal', color: 0xff5a1a, desc: 'Call down an infernal that stuns nearby enemies on impact, then fights for 30 seconds.',
+  infernal: { cost: 30, cls: 'warlock', lvl: 18, cd: 90, name: 'Summon Infernal', color: 0xff5a1a, desc: 'Call down an infernal that stuns nearby enemies on impact, then fights for 30 seconds.',
     use() { const t = findTarget(25), f = facing(); const cx = t ? t.x : P.x + f.x * 6, cz = t ? t.z : P.z + f.z * 6; spawnRing(cx, cz, 0xff5a1a, 7, 0.8);
       after(0.5, () => { aoe(cx, cz, 7, (e) => { dealDamage(e, sd('infernal', 2)); stun(e, 2); }); summonPet('infernal', 30, cx, cz); shake = Math.max(shake, 0.4); }); } },
   // ---------------- druid ----------------
   formCaster: { cls: 'druid', lvl: 1, cd: 1.5, cdId: 'shift', form: 'caster', abbr: 'Hu', name: 'Caster Form', color: 0x9fe05a, desc: 'Your natural form. Hurl nature bolts and heal yourself (ranged damage).', use() { return setForm('caster'); } },
   formCat: { cls: 'druid', lvl: 1, cd: 1.5, cdId: 'shift', form: 'cat', abbr: 'Ca', name: 'Cat Form', color: 0x9a7ae0, desc: 'Fast feline form with quick, high-critical claws (melee damage).', use() { return setForm('cat'); } },
   formBear: { cls: 'druid', lvl: 1, cd: 1.5, cdId: 'shift', form: 'bear', abbr: 'Be', name: 'Bear Form', color: 0xb07a3a, desc: 'Huge bear form. Take 45% less damage and maul everything in front of you (tank).', use() { return setForm('bear'); } },
-  regrowth: { cls: 'druid', lvl: 1, cd: 12, inForm: 'caster', name: 'Regrowth', color: 0x7ae08a, desc: 'Caster: heal 30% of your health now and more over 6 seconds.', use() { heal(P.maxHp * 0.3 * (1 + M.heal)); buff('hot', 6, { hps: P.maxHp * 0.04 * (1 + M.heal) }); spawnRing(P.x, P.z, 0x7ae08a, 3); playAnim('cast', 0.4); } },
-  moonfire: { cls: 'druid', lvl: 2, cd: 4, inForm: 'caster', name: 'Moonfire', color: 0x9ab8ff, desc: 'Caster: burn a target with moonlight, then keep burning it for 10 seconds.', range: 28,
+  regrowth: { cost: 15, cast: 1.5, cls: 'druid', lvl: 1, cd: 12, inForm: 'caster', name: 'Regrowth', color: 0x7ae08a, desc: 'Caster: heal 30% of your health now and more over 6 seconds.', use() { heal(P.maxHp * 0.3 * (1 + M.heal)); buff('hot', 6, { hps: P.maxHp * 0.04 * (1 + M.heal) }); spawnRing(P.x, P.z, 0x7ae08a, 3); playAnim('cast', 0.4); } },
+  moonfire: { cost: 8, cls: 'druid', lvl: 2, cd: 4, inForm: 'caster', name: 'Moonfire', color: 0x9ab8ff, desc: 'Caster: burn a target with moonlight, then keep burning it for 10 seconds.', range: 28,
     use() { const t = findTarget(28); if (!t) return fail('No target in range.'); faceTo(t); playAnim('cast', 0.4); spawnBeam(new THREE.Vector3(t.x, t.y + 14, t.z), new THREE.Vector3(t.x, t.y, t.z), 0x9ab8ff, 0.4); dealDamage(t, sd('moonfire', 0.9)); if (!t.dead) addDot(t, sd('moonfire', 0.35), 10, 'moon'); } },
-  roots: { cls: 'druid', lvl: 6, cd: 16, inForm: 'caster', name: 'Entangling Roots', color: 0x6a8a3a, desc: 'Caster: roots burst from the ground and hold a target in place for 5 seconds.', range: 28,
+  roots: { cost: 10, cast: 1.2, cls: 'druid', lvl: 6, cd: 16, inForm: 'caster', name: 'Entangling Roots', color: 0x6a8a3a, desc: 'Caster: roots burst from the ground and hold a target in place for 5 seconds.', range: 28,
     use() { const t = findTarget(28); if (!t) return fail('No target in range.'); faceTo(t); playAnim('cast', 0.4); stun(t, 5); aggro(t); spawnRing(t.x, t.z, 0x6a8a3a, 2.5, 0.8); } },
-  starfall: { cls: 'druid', lvl: 12, cd: 30, inForm: 'caster', name: 'Starfall', color: 0xd8c8ff, desc: 'Caster: stars rain down on enemies near your target for 3 seconds.',
+  starfall: { cost: 25, cls: 'druid', lvl: 12, cd: 30, inForm: 'caster', name: 'Starfall', color: 0xd8c8ff, desc: 'Caster: stars rain down on enemies near your target for 3 seconds.',
     use() { const t = findTarget(28), f = facing(); const cx = t ? t.x : P.x + f.x * 8, cz = t ? t.z : P.z + f.z * 8; playAnim('cast2', 0.5);
       for (let i = 0; i < 6; i++) after(i * 0.5, () => { const list = enemies.filter((e) => !e.dead && Math.hypot(e.x - cx, e.z - cz) < 10); const e = list.length ? pick(list) : null; if (!e) return; spawnBeam(new THREE.Vector3(e.x, e.y + 18, e.z), new THREE.Vector3(e.x, e.y, e.z), 0xd8c8ff, 0.3); dealDamage(e, sd('starfall', 0.9)); }); } },
-  tranq: { cls: 'druid', lvl: 16, cd: 60, inForm: 'caster', name: 'Tranquility', color: 0xbfff9a, desc: 'Caster: heal 8% of your health every second for 8 seconds.', use() { buff('tranq', 8, { hps: P.maxHp * 0.08 * (1 + M.heal) }); spawnRing(P.x, P.z, 0xbfff9a, 5, 1); playAnim('cast2', 0.5); } },
-  rake: { cls: 'druid', lvl: 1, cd: 5, inForm: 'cat', name: 'Rake', color: 0xc84a3a, desc: 'Cat: a heavy claw strike that makes the target bleed.', range: 4,
+  tranq: { cost: 30, cls: 'druid', lvl: 16, cd: 60, inForm: 'caster', name: 'Tranquility', color: 0xbfff9a, desc: 'Caster: heal 8% of your health every second for 8 seconds.', use() { buff('tranq', 8, { hps: P.maxHp * 0.08 * (1 + M.heal) }); spawnRing(P.x, P.z, 0xbfff9a, 5, 1); playAnim('cast2', 0.5); } },
+  rake: { cost: 35, cls: 'druid', lvl: 1, cd: 5, inForm: 'cat', name: 'Rake', color: 0xc84a3a, desc: 'Cat: a heavy claw strike that makes the target bleed.', range: 4,
     use() { const t = meleeTarget(4); if (!t) return fail('Get closer to your target.'); faceTo(t); playAnim('beast', 0.24); dealDamage(t, sd('rake', 1.8), { kb: 3 }); if (!t.dead) addDot(t, sd('rake', 0.4), 6, 'bleed'); } },
-  bite: { cls: 'druid', lvl: 4, cd: 10, inForm: 'cat', name: 'Ferocious Bite', color: 0xff5a5a, desc: 'Cat: a savage bite for huge damage.', range: 4,
+  bite: { cost: 50, cls: 'druid', lvl: 4, cd: 10, inForm: 'cat', name: 'Ferocious Bite', color: 0xff5a5a, desc: 'Cat: a savage bite for huge damage.', range: 4,
     use() { const t = meleeTarget(4); if (!t) return fail('Get closer to your target.'); faceTo(t); playAnim('beast', 0.3); dealDamage(t, sd('bite', 3), { kb: 4 }); } },
   dash: { cls: 'druid', lvl: 8, cd: 30, inForm: 'cat', name: 'Dash', color: 0xe0d05a, desc: 'Cat: run 70% faster for 6 seconds.', use() { buff('dash', 6); } },
-  swipe: { cls: 'druid', lvl: 12, cd: 6, inForm: 'cat', name: 'Swipe', color: 0xd8a0ff, desc: 'Cat: claw every enemy in front of you.', use() { playAnim('beast', 0.3); const f = facing(); aoe(P.x + f.x * 2, P.z + f.z * 2, 4.5, (e) => dealDamage(e, sd('swipe', 1.3), { kb: 3 })); spawnRing(P.x + f.x * 2, P.z + f.z * 2, 0xd8a0ff, 4.5, 0.3); } },
-  fury: { cls: 'druid', lvl: 16, cd: 30, inForm: 'cat', name: 'Tiger\'s Fury', color: 0xff9a3a, desc: 'Cat: deal 30% more damage for 8 seconds.', use() { buff('fury', 8); } },
-  thrash: { cls: 'druid', lvl: 1, cd: 6, inForm: 'bear', name: 'Thrash', color: 0xb07a3a, desc: 'Bear: maul all nearby enemies, make them bleed and force them to attack you.',
+  swipe: { cost: 40, cls: 'druid', lvl: 12, cd: 6, inForm: 'cat', name: 'Swipe', color: 0xd8a0ff, desc: 'Cat: claw every enemy in front of you.', use() { playAnim('beast', 0.3); const f = facing(); aoe(P.x + f.x * 2, P.z + f.z * 2, 4.5, (e) => dealDamage(e, sd('swipe', 1.3), { kb: 3 })); spawnRing(P.x + f.x * 2, P.z + f.z * 2, 0xd8a0ff, 4.5, 0.3); } },
+  fury: { cls: 'druid', lvl: 16, cd: 30, inForm: 'cat', name: 'Tiger\'s Fury', color: 0xff9a3a, desc: 'Cat: deal 30% more damage for 8 seconds and restore 40 energy.', use() { buff('fury', 8); P.res.energy = Math.min(100, P.res.energy + 40); } },
+  thrash: { cost: 20, cls: 'druid', lvl: 1, cd: 6, inForm: 'bear', name: 'Thrash', color: 0xb07a3a, desc: 'Bear: maul all nearby enemies, make them bleed and force them to attack you.',
     use() { spawnRing(P.x, P.z, 0xb07a3a, 6, 0.45); shake = Math.max(shake, 0.2); playAnim('beast', 0.4); aoe(P.x, P.z, 6, (e) => { dealDamage(e, sd('thrash', 1.3), { kb: 5 }); if (!e.dead) addDot(e, sd('thrash', 0.25), 4, 'bleed'); }); for (const e of enemies) if (!e.dead && Math.hypot(e.x - P.x, e.z - P.z) < 18) aggro(e); } },
-  maul: { cls: 'druid', lvl: 4, cd: 5, inForm: 'bear', name: 'Maul', color: 0x8a5a34, desc: 'Bear: a crushing swipe for heavy damage.', range: 4.5,
+  maul: { cost: 25, cls: 'druid', lvl: 4, cd: 5, inForm: 'bear', name: 'Maul', color: 0x8a5a34, desc: 'Bear: a crushing swipe for heavy damage.', range: 4.5,
     use() { const t = meleeTarget(4.5); if (!t) return fail('Get closer to your target.'); faceTo(t); playAnim('beast', 0.4); dealDamage(t, sd('maul', 2), { kb: 7 }); } },
   regen: { cls: 'druid', lvl: 8, cd: 30, inForm: 'bear', name: 'Frenzied Regeneration', color: 0x7ae08a, desc: 'Bear: heal 35% of your health over 6 seconds.', use() { buff('hot', 6, { hps: (P.maxHp * 0.35 * (1 + M.heal + (M.flags.savage || 0))) / 6 }); spawnRing(P.x, P.z, 0x7ae08a, 3); } },
-  bash: { cls: 'druid', lvl: 12, cd: 20, inForm: 'bear', name: 'Bash', color: 0xe0a030, desc: 'Bear: stun the target for 3 seconds.', range: 4.5,
+  bash: { cost: 15, cls: 'druid', lvl: 12, cd: 20, inForm: 'bear', name: 'Bash', color: 0xe0a030, desc: 'Bear: stun the target for 3 seconds.', range: 4.5,
     use() { const t = meleeTarget(4.5); if (!t) return fail('Get closer to your target.'); faceTo(t); playAnim('beast', 0.4); dealDamage(t, sd('bash', 0.6)); stun(t, 3); } },
-  roar: { cls: 'druid', lvl: 16, cd: 25, inForm: 'bear', name: 'Demoralizing Roar', color: 0xa86a3a, desc: 'Bear: enemies within 10 yards deal 30% less damage for 10 seconds.',
+  roar: { cost: 10, cls: 'druid', lvl: 16, cd: 25, inForm: 'bear', name: 'Demoralizing Roar', color: 0xa86a3a, desc: 'Bear: enemies within 10 yards deal 30% less damage for 10 seconds.',
     use() { spawnRing(P.x, P.z, 0xa86a3a, 10, 0.6); shake = Math.max(shake, 0.25); for (const e of enemies) if (!e.dead && Math.hypot(e.x - P.x, e.z - P.z) < 10) { e.weakT = 10; aggro(e); } } },
 };
 for (const id in SK) SK[id].id = id;
@@ -1763,6 +1919,160 @@ function rebuildMods() {
   trees.forEach((t, ti) => t.list.forEach((tal, i) => { const r = CH.talents[ti + '-' + i] || 0; if (r) tal.f(M, r); }));
 }
 
+/* ===================== 45-dungeons.js ===================== */
+/* Dungeons: one per zone. Each is a separate underground area far outside the world map,
+   entered through a gate in its zone. Rooms are rectangles; you can only walk inside them. */
+
+const DUN_ORIGIN_X = 2000, DUN_SPACING = 400;
+const DUNGEONS = [
+  { id: 'hideout', name: 'Bandit Hideout', zone: 'vale', gate: 'hideoutGate', lv: [6, 8], floor: 0x8a7458, wall: 0x5e4a38, fog: 0x1c140e, light: 0xffb070, mobs: ['bandit', 'sharpshooter'], mini: 'enforcer', boss: 'redfang', deco: 'crates' },
+  { id: 'webwood', name: 'Webwood Hollow', zone: 'wood', gate: 'webwoodGate', lv: [10, 12], floor: 0x3e5034, wall: 0x2a3a24, fog: 0x0e160c, light: 0xb8ff9a, mobs: ['spider', 'bat'], mini: 'webguard', boss: 'aranea', deco: 'web' },
+  { id: 'temple', name: 'Sunken Temple', zone: 'marsh', gate: 'templeGate', lv: [13, 15], floor: 0x6a8a84, wall: 0x3e5e5a, fog: 0x0a1a1e, light: 0x7ae0ff, mobs: ['lurker', 'serpent', 'toad'], mini: 'templeguard', boss: 'hydra', deco: 'water' },
+  { id: 'catacombs', name: 'Frozen Catacombs', zone: 'frost', gate: 'catacombGate', lv: [17, 19], floor: 0xa8b8cc, wall: 0x6a7a92, fog: 0x0c1426, light: 0x9ad8ff, mobs: ['wraith', 'skeleton', 'frostgolem'], mini: 'bonewarden', boss: 'frostlich', deco: 'ice' },
+  { id: 'cinderheart', name: 'Heart of Cinder', zone: 'cinder', gate: 'cinderGate', lv: [21, 24], floor: 0x4e3a36, wall: 0x302424, fog: 0x200c06, light: 0xff8a4a, mobs: ['imp', 'hound', 'cgolem', 'scorpion'], mini: 'magmaw', boss: 'ignaroth', deco: 'lava' },
+];
+const DUN = { cur: null, mobs: [], done: false, chest: null, chestOpen: false, exit: null };
+// Rooms and corridors in local coordinates: [minX, minZ, maxX, maxZ]. The path runs north (negative z).
+const DUN_ROOMS = [[-10, -10, 10, 12], [-4, -52, 4, -8], [-20, -84, 20, -50], [16, -74, 62, -62], [60, -100, 98, -42], [73, -146, 81, -98], [48, -210, 108, -144]];
+const DUN_PACKS = [{ x: -9, z: -62, n: 3 }, { x: 9, z: -76, n: 3 }, { x: 38, z: -68, n: 2 }, { x: 70, z: -56, n: 3 }, { x: 77, z: -120, n: 2 }, { x: 60, z: -158, n: 2 }, { x: 98, z: -160, n: 2 }];
+const DUN_MINI = { x: 86, z: -82 }, DUN_BOSS = { x: 78, z: -186 }, DUN_START = { x: 0, z: 6 };
+DUNGEONS.forEach((d, i) => { d.ox = DUN_ORIGIN_X + i * DUN_SPACING; d.oz = 0; });
+const DUNGEON = Object.fromEntries(DUNGEONS.map((d) => [d.id, d]));
+function dunAt(x) { if (x < DUN_ORIGIN_X - 150) return null; return DUNGEONS[Math.round((x - DUN_ORIGIN_X) / DUN_SPACING)] || null; }
+function walkable(x, z) {
+  const d = dunAt(x); if (!d) return true; const lx = x - d.ox, lz = z - d.oz;
+  return DUN_ROOMS.some((r) => lx > r[0] + 0.7 && lx < r[2] - 0.7 && lz > r[1] + 0.7 && lz < r[3] - 0.7);
+}
+
+/* ---------------- interiors ---------------- */
+function buildDungeon(d) {
+  const root = new THREE.Group(); root.position.set(d.ox, 0, d.oz); root.visible = false;
+  const floorM = toon(d.floor), wallM = toon(d.wall), trimM = toon(new THREE.Color(d.wall).multiplyScalar(0.7).getHex());
+  for (const r of DUN_ROOMS) { const w = r[2] - r[0], l = r[3] - r[1]; const f = mesh(G.box(w + 1.4, 0.4, l + 1.4), floorM, (r[0] + r[2]) / 2, -0.2, (r[1] + r[3]) / 2, false); f.receiveShadow = true; root.add(f); }
+  // walls: blocks around every room edge, skipped where another room joins
+  const inOther = (x, z, self) => DUN_ROOMS.some((r) => r !== self && x > r[0] - 0.2 && x < r[2] + 0.2 && z > r[1] - 0.2 && z < r[3] + 0.2);
+  const spots = [];
+  for (const r of DUN_ROOMS) {
+    const edges = [[r[0], r[1], r[2], r[1], 0, -1], [r[0], r[3], r[2], r[3], 0, 1], [r[0], r[1], r[0], r[3], -1, 0], [r[2], r[1], r[2], r[3], 1, 0]];
+    for (const [x0, z0, x1, z1, nx, nz] of edges) {
+      const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 3));
+      for (let i = 0; i <= n; i++) { const x = x0 + ((x1 - x0) * i) / n + nx * 1.1, z = z0 + ((z1 - z0) * i) / n + nz * 1.1; if (inOther(x - nx * 1.6, z - nz * 1.6, r)) continue; spots.push([x, z, rand(3.5, 5.5)]); }
+    }
+  }
+  const wg = new THREE.BoxGeometry(3.2, 1, 2.2), wall = new THREE.InstancedMesh(wg, wallM, spots.length), wo = new THREE.InstancedMesh(outlineGeo(wg, 0.08), OUTLINE, spots.length);
+  spots.forEach(([x, z, h], i) => { dummy.position.set(x, h / 2, z); dummy.rotation.set(0, rand(-0.15, 0.15), 0); dummy.scale.set(1, h, 1); dummy.updateMatrix(); wall.setMatrixAt(i, dummy.matrix); wo.setMatrixAt(i, dummy.matrix); });
+  wall.castShadow = true; wall.receiveShadow = true; root.add(wall, wo);
+  // torches and pillars
+  const flameM = basic(d.light), poleM = toon(0x3a2a22);
+  for (const r of DUN_ROOMS) {
+    const big = (r[2] - r[0]) > 20;
+    for (const [x, z] of [[r[0] + 1.2, r[1] + 1.2], [r[2] - 1.2, r[3] - 1.2], [r[0] + 1.2, r[3] - 1.2], [r[2] - 1.2, r[1] + 1.2]]) {
+      if (!big && Math.random() < 0.5) continue;
+      const t = new THREE.Group(); t.add(mesh(G.cyl(0.08, 0.1, 2.2, 6), poleM, 0, 1.1, 0), mesh(G.cone(0.22, 0.6, 6), flameM, 0, 2.45, 0, false));
+      const h = mesh(G.sph(0.7, 10, 8), glow(d.light, 0.22), 0, 2.45, 0, false); h.userData.noOutline = true; t.add(h); t.position.set(x, 0, z); root.add(t);
+    }
+    if (big) for (let i = 0; i < 2; i++) { const p = mesh(G.cyl(0.8, 1, 6, 10), trimM, lerp(r[0], r[2], 0.3 + i * 0.4), 3, lerp(r[1], r[3], 0.5)); p.userData.isPillar = true; root.add(p); }
+  }
+  // theme decoration
+  const decoN = 26;
+  for (let i = 0; i < decoN; i++) {
+    const r = pick(DUN_ROOMS.slice(2)), x = rand(r[0] + 2, r[2] - 2), z = rand(r[1] + 2, r[3] - 2);
+    if (d.deco === 'web') { const w = mesh(G.box(rand(2, 4), rand(2, 3.5), 0.02), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, side: THREE.DoubleSide }), x, 2, z, false); w.rotation.y = rand(0, 3); root.add(w); }
+    else if (d.deco === 'water') { const w = mesh(G.cyl(rand(1.5, 3), rand(1.5, 3), 0.05, 16), toon(0x3a9ad8, { transparent: true, opacity: 0.7 }), x, 0.03, z, false); root.add(w); }
+    else if (d.deco === 'ice') { const s = mesh(G.cone(rand(0.3, 0.6), rand(1.5, 3), 6), toon(0xbfe8ff, { emissive: 0x1a3a5a }), x, 0.8, z); s.rotation.z = rand(-0.3, 0.3); root.add(s); }
+    else if (d.deco === 'lava') { const l = mesh(G.cyl(rand(1, 2.4), rand(1, 2.4), 0.06, 16), basic(0xff6a1a), x, 0.04, z, false); root.add(l); }
+    else { const c = mesh(G.box(1.1, 0.9, 0.9), toon(0xa0703e), x, 0.45, z); c.rotation.y = rand(0, 3); root.add(c); }
+  }
+  root.traverse((o) => { if (o.isMesh && !o.isInstancedMesh && !o.userData.noOutline && !(o.material && o.material.transparent) && o.material !== OUTLINE && o.material.isMeshToonMaterial) outline(o, 0.05); });
+  scene.add(root); d.root = root;
+}
+DUNGEONS.forEach(buildDungeon);
+
+/* ---------------- gates in the world ---------------- */
+function portalModel(color, scale = 1) {
+  const g = new THREE.Group(), stone = toon(0x7a7a86);
+  for (const s of [-1, 1]) g.add(mesh(G.box(1, 5, 1), stone, s * 2.2, 2.5, 0));
+  g.add(mesh(G.box(5.6, 0.9, 1.2), stone, 0, 5.2, 0));
+  const disc = mesh(new THREE.CircleGeometry(1.9, 32), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }), 0, 2.5, 0, false);
+  disc.scale.y = 1.25; disc.userData.noOutline = true; g.add(disc);
+  const ring = mesh(new THREE.TorusGeometry(1.95, 0.12, 8, 32), basic(color), 0, 2.5, 0, false); ring.scale.y = 1.25; g.add(ring);
+  bake(g); outline(g, 0.05); g.scale.setScalar(scale); g.userData.disc = disc; return g;
+}
+const gates = DUNGEONS.map((d) => { const p = PLACES[d.gate], g = portalModel(d.light); g.position.set(p.x, groundAt(p.x, p.z), p.z); g.rotation.y = Math.atan2(-p.x, -p.z); addProp(g); return { d, g, x: p.x, z: p.z }; });
+
+/* ---------------- entering and leaving ---------------- */
+const dunLight = new THREE.PointLight(0xffb070, 0, 36, 1.3); scene.add(dunLight);
+function enterDungeon(d) {
+  if (DUN.cur) return;
+  closeAllWindows();
+  const f = $('fade'); f.textContent = `Entering ${d.name}…`; f.classList.add('on');
+  setTimeout(() => {
+    DUN.cur = d; DUN.done = false; DUN.chestOpen = false; d.root.visible = true;
+    for (const pk of DUN_PACKS) for (let i = 0; i < pk.n; i++) dunMob(pick(d.mobs), d.ox + pk.x + rand(-3, 3), d.oz + pk.z + rand(-3, 3), { lvl: randi(d.lv[0], d.lv[1]), elite: Math.random() < 0.35 });
+    dunMob(NAMED[d.mini].base, d.ox + DUN_MINI.x, d.oz + DUN_MINI.z, { named: d.mini });
+    DUN.boss = dunMob(NAMED[d.boss].base, d.ox + DUN_BOSS.x, d.oz + DUN_BOSS.z, { named: d.boss });
+    DUN.exit = portalModel(d.light, 0.7); DUN.exit.position.set(d.ox + DUN_START.x, 0, d.oz + DUN_START.z + 4.5); scene.add(DUN.exit);
+    P.x = d.ox + DUN_START.x; P.z = d.oz + DUN_START.z; P.y = 0; P.vy = 0; P.face = Math.PI; camYaw = 0; target = null; P.autoAtk = false;
+    for (const p of pets) { p.x = P.x + 1; p.z = P.z + 1; }
+    camLook.set(P.x, P.y + 1.7, P.z); dunLight.color.setHex(d.light); dunLight.intensity = 1.15;
+    lastZone = null; toast(`${d.name}: recommended level ${d.lv[0]}-${d.lv[1]}. Defeat ${NAMED[d.boss].name}.`);
+    setTimeout(() => f.classList.remove('on'), 300);
+  }, 650);
+}
+function dunMob(type, x, z, o) {
+  const e = spawnEnemy(type, x, z, o); e.dungeon = true; e.respawn = 1e9; e.T.leash = 400;
+  if (!o.named) { e.maxHp = e.hp = Math.round(e.maxHp * 1.3); }
+  DUN.mobs.push(e); return e;
+}
+function leaveDungeon(toGate = true) {
+  const d = DUN.cur; if (!d) return;
+  for (const e of DUN.mobs) { scene.remove(e.g); const i = enemies.indexOf(e); if (i >= 0) enemies.splice(i, 1); }
+  DUN.mobs = []; d.root.visible = false;
+  for (const o of [DUN.exit, DUN.chest, DUN.exit2]) if (o) scene.remove(o);
+  DUN.exit = DUN.chest = DUN.exit2 = null; DUN.cur = null; dunLight.intensity = 0; target = null; P.autoAtk = false;
+  if (toGate) { const g = PLACES[d.gate], L = Math.hypot(g.x, g.z); P.x = g.x - (g.x / L) * 7; P.z = g.z - (g.z / L) * 7; P.y = groundAt(P.x, P.z); camLook.set(P.x, P.y + 1.7, P.z); }
+  for (const p of pets) { p.x = P.x + 1; p.z = P.z + 1; }
+  skyDome.visible = true; for (const c of clouds) c.visible = true; stars.visible = true; scene.background = null;
+  lastZone = null;
+}
+function updateDungeon(dt) {
+  for (const g of gates) if (g.g.visible) g.g.userData.disc.rotation.z += dt;
+  const d = DUN.cur; if (!d) return;
+  dunLight.position.set(P.x, P.y + 4, P.z);
+  if (DUN.exit) DUN.exit.userData.disc.rotation.z += dt;
+  for (const e of DUN.mobs) if (e.boss && !e.dead && !e._adds && e.hp < e.maxHp * 0.5 && e.def.adds) {
+    e._adds = true; toast(`${e.name} calls for help!`);
+    for (let i = 0; i < 2; i++) { const a = dunMob(e.def.adds, e.x + rand(-4, 4), e.z + rand(-4, 4), { lvl: e.lvl - 1 }); aggro(a); }
+  }
+  if (!DUN.done && DUN.boss && DUN.boss.dead) {
+    DUN.done = true; bannerMsg('Dungeon complete!'); toast(`You cleared ${d.name}! Open the chest for your reward.`);
+    const c = new THREE.Group(); c.add(mesh(G.box(1.6, 1, 1.1), toon(0xc8902a), 0, 0.5, 0), mesh(G.box(1.7, 0.35, 1.2), toon(0xffd479), 0, 1.1, 0), mesh(G.box(0.3, 0.3, 0.1), basic(0xffffff), 0, 0.8, 0.6, false));
+    const h = mesh(G.sph(1.4, 10, 8), glow(0xffd479, 0.25), 0, 0.8, 0, false); h.userData.noOutline = true; c.add(h); outline(c, 0.04);
+    c.position.set(d.ox + DUN_BOSS.x, 0, d.oz + DUN_BOSS.z - 8); scene.add(c); DUN.chest = c;
+    DUN.exit2 = portalModel(d.light, 0.7); DUN.exit2.position.set(d.ox + DUN_BOSS.x + 8, 0, d.oz + DUN_BOSS.z - 14); scene.add(DUN.exit2);
+  }
+  if (DUN.exit2) DUN.exit2.userData.disc.rotation.z += dt;
+}
+function openChest() {
+  if (DUN.chestOpen) return; DUN.chestOpen = true; const d = DUN.cur;
+  const g = Math.round(d.lv[1] * rand(12, 18)); P.gold += g; toast(`You find ${g} gold.`);
+  for (const src of ['boss', 'elite']) { const it = genItem(d.lv[1] + 1, rollRarity(src), pick(GEAR_SLOTS), CH.cls, d.zone); if (addItem(it)) toast(`You receive loot: <span class="q${it.rarity}">[${esc(it.name)}]</span>`, true); }
+  P.potions += 2; if (DUN.chest) DUN.chest.children[1].rotation.x = -1; saveChar();
+}
+function dungeonEnv() {
+  const d = DUN.cur; skyDome.visible = false; for (const c of clouds) c.visible = false; stars.visible = false;
+  if (!scene.background) scene.background = new THREE.Color(); scene.background.setHex(d.fog);
+  scene.fog.color.setHex(d.fog); scene.fog.near = 22; scene.fog.far = 105;
+  hemi.intensity = 0.42; hemi.color.setHex(d.light); sun.intensity = 0.32; sun.color.setHex(0xffffff);
+}
+function drawDungeonMap(x, W, s) {
+  const d = DUN.cur, span = 160, toM = (wx, wz) => [((wx - P.x) / span + 0.5) * W, ((wz - P.z) / span + 0.5) * W];
+  x.fillStyle = hex(d.fog); x.fillRect(0, 0, W, W);
+  x.fillStyle = hex(d.floor);
+  for (const r of DUN_ROOMS) { const [a, b] = toM(d.ox + r[0], d.oz + r[1]), [c, e] = toM(d.ox + r[2], d.oz + r[3]); x.fillRect(a, b, c - a, e - b); }
+  for (const e of DUN.mobs) { if (e.dead) continue; const [a, b] = toM(e.x, e.z); x.fillStyle = e.boss ? '#ff5a2a' : e.elite ? '#ffd479' : '#ff6a6a'; x.beginPath(); x.arc(a, b, (e.boss ? 4 : e.elite ? 2.6 : 1.8) * s, 0, 7); x.fill(); }
+}
+
 /* ===================== 50-game.js ===================== */
 /* Game state and systems: stats, combat, monsters, pets, loot, quests, saving. */
 
@@ -1777,7 +2087,7 @@ const enemies = [], npcs = [], pets = [], projs = [], fxs = [], teles = [], time
 const cds = {};
 const P = { x: 0, z: 10, y: 4, vy: 0, face: Math.PI, hp: 100, maxHp: 100, stam: 100, lvl: 1, xp: 0, gold: 0, potions: 3, form: 'caster',
   attackT: -1, attackSpec: null, hitDone: true, dead: false, invuln: 0, lastHurt: -99, lastCombat: -99, walk: 0, onGround: true, dash: null, buffs: {}, swing: 0,
-  power: 10, critPct: 5, haste: 0, armor: 0, speedMul: 1, stats: {} };
+  power: 10, autoAtk: false, swingT: 0, gcd: 0, cast: null, res: { energy: 100, focus: 100, mana: 100, rage: 0 }, manaMax: 100, critPct: 5, haste: 0, armor: 0, speedMul: 1, stats: {} };
 function after(t, fn) { timers.push({ t, fn }); }
 
 /* ---------------- saving ---------------- */
@@ -1801,7 +2111,8 @@ function newChar(o) {
 }
 function saveChar() {
   if (!CH || mode !== 'play') return;
-  Object.assign(CH, { lvl: P.lvl, xp: P.xp, gold: P.gold, potions: P.potions, x: P.x, z: P.z, form: P.form, dayT, zone: zoneAt(P.x, P.z).id });
+  const gp = DUN.cur ? PLACES[DUN.cur.gate] : null;
+  Object.assign(CH, { lvl: P.lvl, xp: P.xp, gold: P.gold, potions: P.potions, x: gp ? gp.x * 0.98 : P.x, z: gp ? gp.z * 0.98 : P.z, form: P.form, dayT, zone: zoneAt(P.x, P.z).id });
   STORE.last = CH.id; store.set(SAVE_KEY, STORE);
 }
 
@@ -1817,11 +2128,13 @@ function recalcStats(keepRatio = true) {
   const bearForm = CH.cls === 'druid' && P.form === 'bear';
   P.maxHp = Math.round((60 + st.sta * 10) * (R.hp || 1) * C.hp * (1 + M.hp) * (bearForm ? (M.flags.ursoc ? 1.45 : 1.25) : 1));
   P.hp = keepRatio ? Math.max(1, Math.round(P.maxHp * ratio)) : P.maxHp;
-  P.power = 6 + st[prim] * 1.2 + wd;
+  P.power = 5 + st[prim] * 0.8 + wd * 0.75;
   P.critPct = 5 + st.critR / 8 + (R.crit || 0) * 100 + M.crit + (CH.cls === 'druid' && P.form === 'cat' ? 12 : 0);
   P.haste = st.hasteR / 8 + (R.haste || 0) + M.haste;
   P.armor = Math.round((st.armorG + P.lvl * 6 + (C.armor === 'mail' ? 20 : C.armor === 'leather' ? 10 : 0)) * (1 + M.armor) * (bearForm ? 2.5 : 1));
   P.speedMul = (R.speed || 1) * (1 + M.speed);
+  P.manaMax = CH.cls === 'warlock' || CH.cls === 'druid' ? Math.round(80 + st.int * 6) : 0;
+  if (P.res) P.res.mana = Math.min(P.res.mana, P.manaMax);
 }
 function atk() {
   let a = P.power * (1 + M.dmg);
@@ -1913,10 +2226,10 @@ let bannerTO; function bannerMsg(t) { const b = $('banner'); b.textContent = t; 
 function fail(msg) { toast(msg); return false; }
 
 /* ---------------- monsters ---------------- */
-const RADIUS = { slime: 0.9, quad: 1.1, spider: 1.3, biped: 0.6, treant: 1.3, wisp: 0.7, wraith: 0.8, crab: 1.2, lurker: 0.9, toad: 1.2, yeti: 1.5, imp: 0.6, golem: 2.2 };
+const RADIUS = { shroom: 0.8, bat: 0.8, bird: 0.9, serpent: 1.0, scorpion: 1.3, slime: 0.9, quad: 1.1, spider: 1.3, biped: 0.6, treant: 1.3, wisp: 0.7, wraith: 0.8, crab: 1.2, lurker: 0.9, toad: 1.2, yeti: 1.5, imp: 0.6, golem: 2.2 };
 function mobStats(def, lvl, elite, boss) {
-  const hp = Math.round((30 + lvl * 24 + lvl * lvl * 0.6) * (def.hp || 1) * (elite ? 3 : 1) * (boss ? 9 : 1));
-  const dmg = (5 + lvl * 3.2) * (def.dmg || 1) * (elite ? 1.5 : 1) * (boss ? 1.7 : 1);
+  const hp = Math.round((34 + lvl * 27 + lvl * lvl * 0.7) * (def.hp || 1) * (elite ? 3 : 1) * (boss ? 9 : 1));
+  const dmg = (6 + lvl * 4) * (def.dmg || 1) * (elite ? 1.5 : 1) * (boss ? 1.7 : 1);
   return { hp, dmg };
 }
 function spawnEnemy(type, x, z, o = {}) {
@@ -1929,7 +2242,7 @@ function spawnEnemy(type, x, z, o = {}) {
   const scale = named ? named.scale : elite ? 1.35 : 1;
   const mk = buildMobModel(def, scale, elite || boss);
   const st = mobStats(def, lvl, elite, boss), sc = scale * (def.scale || 1);
-  const T = { dmg: st.dmg, speed: def.speed || 4.5, aggro: (def.aggro || 14) + (boss ? 6 : 0), range: (def.range || 2.2) * (def.ranged ? 1 : Math.max(1, sc * 0.85)), ranged: !!def.ranged, proj: def.proj,
+  const T = { dmg: st.dmg, speed: def.speed || 4.5, aggro: (def.aggro || 14) + 2 + (boss ? 6 : 0), range: (def.range || 2.2) * (def.ranged ? 1 : Math.max(1, sc * 0.85)), ranged: !!def.ranged, proj: def.proj,
     cd: def.cd || (boss ? 2 : 1.4), windup: def.windup || (boss ? 0.7 : def.ranged ? 0.5 : 0.35), radius: (RADIUS[def.model] || 1) * sc, leash: boss ? 40 : 46 };
   const e = { type: named ? o.named : type, base: named ? named.base : type, named: o.named || null, def, name: def.name, lvl, elite, boss, T, maxHp: st.hp, hp: st.hp, x, z, y: groundAt(x, z),
     home: { x, z }, state: 'idle', cd: 0, windup: 0, face: rand(0, 6.28), wanderT: rand(0, 4), wx: null, wz: null, anim: rand(0, 6), atkAnim: -1, kbx: 0, kbz: 0, flashT: 0,
@@ -1948,7 +2261,7 @@ function spawnAll() {
       spawnEnemy(type, x, z, { elite: Math.random() < 0.07 });
     }
   }
-  for (const id in NAMED) { const n = NAMED[id], p = PLACES[n.place]; spawnEnemy(n.base, p.x + 2, p.z + 2, { named: id }); }
+  for (const id in NAMED) { const n = NAMED[id]; if (n.dungeon) continue; const p = PLACES[n.place]; spawnEnemy(n.base, p.x + 2, p.z + 2, { named: id }); }
 }
 function respawnEnemy(e) {
   e.dead = false; e.hp = e.maxHp; e.x = e.home.x; e.z = e.home.z; e.state = 'idle'; e.g.visible = true; e.g.scale.setScalar(e.sc); e.windup = 0; e.slam = false; e.dots = []; e.stunT = 0; e.fearT = 0; e.weakT = 0;
@@ -2000,7 +2313,7 @@ function killEnemy(e) {
 function dropLoot(e) {
   const g = Math.round(rand(1, 3) * e.lvl * (e.elite ? 3 : 1) * (e.boss ? 8 : 1)); P.gold += g;
   setTimeout(() => floatText(`+${g} g`, e.x, e.y + 1, e.z, 'gold'), 180);
-  const zone = zoneAt(e.x, e.z).id;
+  const zone = e.dungeon && DUN.cur ? DUN.cur.zone : zoneAt(e.x, e.z).id;
   const items = [];
   if (e.boss) { items.push(genItem(e.lvl + 1, rollRarity('boss'), pick(GEAR_SLOTS), CH.cls, zone)); items.push(genItem(e.lvl + 1, rollRarity('elite'), pick(GEAR_SLOTS), CH.cls, zone)); P.potions += 2; }
   else if (e.elite) { items.push(genItem(e.lvl + 1, rollRarity('elite'), pick(GEAR_SLOTS), CH.cls, zone)); if (Math.random() < 0.5) P.potions++; }
@@ -2037,16 +2350,17 @@ function hurtPlayer(dmg, lvl = 1) {
   let dr = armorDR(lvl) + (RACES[CH.race].dr || 0) + (CH.cls === 'druid' && P.form === 'bear' ? 0.45 : 0) + (M.flags.moonkin && P.form === 'caster' ? 0.1 : 0);
   if (M.flags.survivalist && P.hp < P.maxHp * 0.35) dr += 0.3;
   dmg = Math.max(1, Math.round(dmg * rand(0.9, 1.1) * (1 - clamp(dr, 0, 0.8))));
-  P.hp -= dmg; P.lastHurt = clock; P.lastCombat = clock; P.invuln = 0.2; shake = Math.max(shake, 0.2); breakStealth();
+  P.hp -= dmg; P.lastHurt = clock; P.lastCombat = clock; P.invuln = 0.2; gainRage((dmg / P.maxHp) * 90); shake = Math.max(shake, 0.2); breakStealth();
   floatText('-' + dmg, P.x, P.y + 2.8, P.z, 'hurt'); $('hurt').style.opacity = 1; setTimeout(() => ($('hurt').style.opacity = 0), 140);
   if (P.hp <= 0) { P.hp = 0; die(); }
 }
 function die() {
-  P.dead = true; closeAllWindows(); breakStealth(); dismissPets(); target = null;
+  P.dead = true; P.autoAtk = false; P.cast = null; closeAllWindows(); breakStealth(); dismissPets(); target = null;
   for (const e of enemies) if (e.state === 'chase') e.state = 'return';
   setTimeout(() => { $('dead').hidden = false; $('btnRespawn').focus(); }, 1000);
 }
 function respawnPlayer() {
+  if (DUN.cur) { leaveDungeon(); P.dead = false; P.hp = Math.round(P.maxHp * 0.6); $('dead').hidden = true; saveChar(); canvas.focus(); return; }
   const t = TOWNS.filter((t) => CH.towns[t.id]).sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z))[0] || TOWNS[0];
   P.dead = false; P.x = t.x; P.z = t.z + 10; P.y = groundAt(P.x, P.z); P.vy = 0; P.hp = Math.round(P.maxHp * 0.6); $('dead').hidden = true; saveChar(); canvas.focus();
 }
@@ -2101,45 +2415,98 @@ function faceTo(e) { if (e) P.face = Math.atan2(e.x - P.x, e.z - P.z); }
 function playAnim(kind, dur) { P.attackT = 0; P.attackSpec = { kind: 'none', anim: kind, dur }; P.hitDone = true; }
 
 /* ---------------- basic attacks & skills ---------------- */
-function basicSpec() {
-  const c = CH.cls;
-  if (c === 'rogue') return { kind: 'melee', anim: 'dagger', dur: 0.32, mult: 0.75, range: 2.6, arc: 0.2, kb: 3 };
-  if (c === 'archer') return { kind: 'proj', anim: 'bow', dur: 0.55, mult: 0.95, proj: 'arrow', speed: 44, range: 34 };
-  if (c === 'warlock') return { kind: 'proj', anim: 'cast', dur: 0.6, mult: 1, proj: 'orb', color: 0x9a4dff, speed: 24, range: 28 };
-  if (P.form === 'cat') return { kind: 'melee', anim: 'beast', dur: 0.3, mult: 0.85, range: 2.8, arc: 0.2, kb: 3 };
-  if (P.form === 'bear') return { kind: 'melee', anim: 'beast', dur: 0.55, mult: 0.95, range: 3.6, arc: -0.15, kb: 8 };
-  return { kind: 'proj', anim: 'cast', dur: 0.6, mult: 1, proj: 'orb', color: 0x9fe05a, speed: 26, range: 28 };
+/* ---------------- resources (WoW style) ---------------- */
+const RES = { energy: { name: 'Energy', color: '#ffe066' }, focus: { name: 'Focus', color: '#ff9a4a' }, mana: { name: 'Mana', color: '#4aa8ff' }, rage: { name: 'Rage', color: '#ff4a5a' } };
+function resType() { if (CH.cls === 'rogue') return 'energy'; if (CH.cls === 'archer') return 'focus'; if (CH.cls === 'warlock') return 'mana'; return P.form === 'cat' ? 'energy' : P.form === 'bear' ? 'rage' : 'mana'; }
+const resMax = (t) => (t === 'mana' ? P.manaMax : 100);
+function skillCost(sk) { if (!sk.cost) return 0; return resType() === 'mana' ? Math.round((sk.cost / 100) * P.manaMax) : sk.cost; }
+function updateRes(dt) {
+  const hm = hasteMul(), inC = clock - P.lastCombat < 5;
+  P.res.energy = Math.min(100, P.res.energy + 11 * hm * dt); P.res.focus = Math.min(100, P.res.focus + 8 * hm * dt);
+  P.res.mana = Math.min(P.manaMax, P.res.mana + P.manaMax * (inC ? 0.012 : 0.05) * dt);
+  if (!inC) P.res.rage = Math.max(0, P.res.rage - 3 * dt);
 }
+function gainRage(n) { if (CH.cls === 'druid' && P.form === 'bear') P.res.rage = Math.min(100, P.res.rage + n); }
+let _errT = 0;
+function errMsg(m) { if (clock - _errT < 0.8) return false; _errT = clock; floatText(m, P.x, P.y + 3.1, P.z, 'hurt'); return false; }
+
+/* ---------------- auto-attack, casting, global cooldown ---------------- */
+function swingSpec() {
+  const c = CH.cls;
+  if (c === 'rogue') return { kind: 'melee', anim: 'dagger', speed: 1.4, mult: 1.0, range: 2.6, arc: 0.2, kb: 2 };
+  if (c === 'archer') return { kind: 'proj', anim: 'bow', speed: 2.2, mult: 1.35, pspeed: 44, range: 34 };
+  if (c === 'druid' && P.form === 'cat') return { kind: 'melee', anim: 'beast', speed: 1.0, mult: 0.75, range: 2.8, arc: 0.2, kb: 2 };
+  if (c === 'druid' && P.form === 'bear') return { kind: 'melee', anim: 'beast', speed: 2.2, mult: 1.35, range: 3.6, arc: -0.15, kb: 6, cleave: true };
+  return null;
+}
+function basicSkill() { if (CH.cls === 'warlock') return SK.shadowbolt; if (CH.cls === 'druid' && P.form === 'caster') return SK.wrath; return null; }
+const gcdTime = () => Math.max(0.75, 1 / hasteMul());
 function startAttack() {
-  if (P.dead || P.attackT >= 0 || mode !== 'play' || anyModal()) return;
-  const s = basicSpec(); s.dur /= hasteMul();
-  const t = s.kind === 'melee' ? meleeTarget(4.5) : findTarget(s.range); if (t) faceTo(t);
-  P.attackT = 0; P.attackSpec = s; P.hitDone = false; if (s.anim === 'dagger') P.swing ^= 1;
+  if (P.dead || mode !== 'play' || anyModal()) return;
+  const bs = basicSkill(); if (bs) { useSkill(bs); return; }
+  const s = swingSpec(), t = target && !target.dead && dist(target) < 45 ? target : s.kind === 'melee' ? meleeTarget(5) : findTarget(s.range);
+  if (!t) { if (P.attackT < 0) playAnim(s.anim, 0.3); return; }
+  setTarget(t); faceTo(t); P.autoAtk = true;
+}
+function updateAuto(dt) {
+  if (P.swingT > 0) P.swingT -= dt * hasteMul();
+  if (!P.autoAtk) return;
+  const s = swingSpec(); if (!s || !target || target.dead) { P.autoAtk = false; return; }
+  if (P.cast || P.swingT > 0) return;
+  const d = dist(target) - target.T.radius; if (s.kind === 'melee' ? d > s.range + 0.6 : d > s.range) return;
+  faceTo(target); P.swingT = s.speed; P.lastCombat = clock;
+  if (s.anim === 'dagger') P.swing ^= 1; playAnim(s.anim, Math.min(0.4, s.speed * 0.5));
+  if (s.kind === 'melee') doMelee(s); else { const from = handPos(); fire({ kind: 'arrow', pos: from, dir: aimAt(target, from), speed: s.pspeed, dmg: atk() * s.mult }); }
   if (M.flags.adrenaline) for (const k in cds) if (cds[k] > 0) cds[k] = Math.max(0, cds[k] - 0.5);
 }
 function doMelee(s) {
-  const f = facing(); let any = false; const cleave = P.buffs.flurry || CH.cls === 'druid';
-  const t = target && !target.dead && dist(target) < s.range + target.T.radius + 0.5 ? target : null;
-  for (const e of enemies) {
-    if (e.dead || !e.g.visible) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz);
-    if (!(d < s.range + e.T.radius && (d < 1.3 || (dx * f.x + dz * f.z) / d > s.arc))) continue;
-    if (!cleave && t && e !== t) continue;
-    dealDamage(e, atk() * s.mult, { kb: s.kb }); any = true; if (!cleave && !t) break;
+  const f = facing(); let any = false; const cleave = s.cleave || P.buffs.flurry;
+  const t = target && !target.dead && dist(target) < s.range + target.T.radius + 0.6 ? target : null;
+  if (t) { dealDamage(t, atk() * s.mult, { kb: s.kb }); any = true; }
+  if (cleave) for (const e of enemies) {
+    if (e === t || e.dead || !e.g.visible) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz);
+    if (d < s.range + e.T.radius && (d < 1.3 || (dx * f.x + dz * f.z) / d > s.arc)) { dealDamage(e, atk() * s.mult * 0.7, { kb: s.kb }); any = true; }
   }
-  if (any) shake = Math.max(shake, 0.08);
+  if (any) { shake = Math.max(shake, 0.08); gainRage(9); }
 }
-function doBasicRanged(s) { const from = handPos(), t = findTarget(s.range); faceTo(t); fire({ kind: s.proj, pos: from, dir: aimAt(t, from), speed: s.speed, dmg: atk() * s.mult, color: s.color, size: 0.2 }); }
 function skillCd(sk) { return Math.max(0.5, sk.cd - (M.cdr[sk.id] || 0)); }
-function useSlot(i) {
+function useSlot(i) { const sk = barSkills()[i]; if (sk) useSkill(sk); }
+function useSkill(sk) {
   if (mode !== 'play' || P.dead || anyModal()) return;
-  const sk = barSkills()[i]; if (!sk) return;
   if (P.lvl < sk.lvl) return fail(`${sk.name} unlocks at level ${sk.lvl}.`);
+  if (P.cast) return;
   const id = sk.cdId || sk.id;
-  if ((cds[id] || 0) > 0) return;
   if (sk.id === 'shadowstep' && P.buffs.dance) cds.shadowstep = 0;
+  if ((cds[id] || 0) > 0) return errMsg('Not ready yet');
+  if (!sk.offGcd && P.gcd > 0) return;
+  const rt = resType(); if (skillCost(sk) > P.res[rt]) return errMsg(`Not enough ${RES[rt].name.toLowerCase()}`);
+  if (sk.cast) {
+    if (sk.range && !findTarget(sk.range)) return errMsg('No target in range');
+    P.cast = { sk, t: 0, dur: sk.cast / hasteMul() }; P.gcd = gcdTime(); breakStealth(); return;
+  }
   const r = sk.use(); if (r === false) return;
+  finishSkill(sk);
+}
+function finishSkill(sk) {
+  const id = sk.cdId || sk.id, rt = resType();
+  P.res[rt] = Math.max(0, P.res[rt] - skillCost(sk));
   cds[id] = P.buffs.dance && sk.id === 'shadowstep' ? 0.5 : skillCd(sk);
+  if (!sk.offGcd) P.gcd = Math.max(P.gcd, gcdTime());
   if (sk.id !== 'vanish') breakStealth();
+  if (!sk.form && target && !target.dead && swingSpec()) P.autoAtk = true;
+  P.lastCombat = target && !target.dead ? clock : P.lastCombat;
+}
+function updateCast(dt, moving) {
+  if (P.gcd > 0) P.gcd -= dt;
+  if (!P.cast) return;
+  if (moving || P.vy > 1) { floatText('Interrupted', P.x, P.y + 3.1, P.z, 'hurt'); P.cast = null; P.gcd = 0; return; }
+  P.cast.t += dt;
+  if (Math.floor(P.cast.t * 4) !== Math.floor((P.cast.t - dt) * 4) && hero && P.form === 'caster') playAnim('cast', 0.25);
+  if (P.cast.t >= P.cast.dur) {
+    const sk = P.cast.sk; P.cast = null;
+    if (skillCost(sk) > P.res[resType()]) return errMsg('Not enough mana');
+    const r = sk.use(); if (r !== false) finishSkill(sk);
+  }
 }
 function setForm(f) {
   if (P.form === f) return false;
@@ -2153,7 +2520,8 @@ function applyForm() {
 }
 function rebuildHero() {
   if (hero) scene.remove(hero.g); hero = buildHero(CH, CH.equip); scene.add(hero.g);
-  if (CH.cls === 'druid') { if (!cat) cat = buildBeast('cat'); if (!bear) bear = buildBeast('bear'); }
+  if (cat) { scene.remove(cat.g); cat = null; } if (bear) { scene.remove(bear.g); bear = null; }
+  if (CH.cls === 'druid') { const ac = HAIRS[CH.hair ?? 1]; cat = buildBeast('cat', CH.race, ac); bear = buildBeast('bear', CH.race, ac); }
   else { if (cat) { scene.remove(cat.g); cat = null; } if (bear) { scene.remove(bear.g); bear = null; } }
   hero.g.position.set(P.x, P.y, P.z); hero.g.rotation.y = P.face; applyForm();
   if (P.buffs.stealth) setGhostAll(true);
@@ -2246,8 +2614,8 @@ function updateEnemy(e, dt) {
     }
   }
   let moving = false;
-  if (speed > 0) { const nx = e.x + tx * speed * dt, nz = e.z + tz * speed * dt; if (groundAt(nx, nz) > -0.6 || e.state === 'chase') { e.x = nx; e.z = nz; moving = true; } else e.wx = null; }
-  if (e.kbx || e.kbz) { e.x += e.kbx * dt; e.z += e.kbz * dt; const f = Math.pow(0.002, dt); e.kbx *= f; e.kbz *= f; if (Math.abs(e.kbx) + Math.abs(e.kbz) < 0.1) e.kbx = e.kbz = 0; }
+  if (speed > 0) { const nx = e.x + tx * speed * dt, nz = e.z + tz * speed * dt; if ((groundAt(nx, nz) > -0.6 || e.state === 'chase') && walkable(nx, nz)) { e.x = nx; e.z = nz; moving = true; } else e.wx = null; }
+  if (e.kbx || e.kbz) { if (walkable(e.x + e.kbx * dt, e.z + e.kbz * dt)) { e.x += e.kbx * dt; e.z += e.kbz * dt; } const f = Math.pow(0.002, dt); e.kbx *= f; e.kbz *= f; if (Math.abs(e.kbx) + Math.abs(e.kbz) < 0.1) e.kbx = e.kbz = 0; }
   if (d < T.radius + 0.5 && d > 0.01) { e.x -= (dxp / d) * (T.radius + 0.5 - d); e.z -= (dzp / d) * (T.radius + 0.5 - d); }
   if (e.T.radius < 1.6) collide(e, T.radius * 0.6);
   e.y = groundAt(e.x, e.z); if (e.y < -0.6) e.y = -0.6;
@@ -2325,6 +2693,12 @@ function npcMarker(n) {
   return best;
 }
 function nearestInteract() {
+  if (DUN.cur) {
+    if (DUN.chest && !DUN.chestOpen && Math.hypot(P.x - DUN.chest.position.x, P.z - DUN.chest.position.z) < 3.2) return { kind: 'chest' };
+    for (const ex of [DUN.exit, DUN.exit2]) if (ex && Math.hypot(P.x - ex.position.x, P.z - ex.position.z) < 3.5) return { kind: 'exit' };
+    return null;
+  }
+  for (const g of gates) if (Math.hypot(P.x - g.x, P.z - g.z) < 4.5) return { kind: 'gate', d: g.d };
   for (const n of npcs) if (Math.hypot(P.x - n.x, P.z - n.z) < 4.2) return { kind: 'npc', n };
   for (const nd of nodes) if (nd.on && Math.hypot(P.x - nd.x, P.z - nd.z) < 2.6) return { kind: 'node', nd };
   return null;
@@ -2337,6 +2711,7 @@ function gatherNode(nd) {
   else { heal(P.maxHp * 0.15); gainXP(5); }
 }
 function discoverTowns() {
+  if (DUN.cur) return;
   for (const t of TOWNS) if (!CH.towns[t.id] && Math.hypot(P.x - t.x, P.z - t.z) < 45) {
     CH.towns[t.id] = true; const xp = 30 * ZONE[t.zone].lv[0]; gainXP(xp); toast(`Discovered: ${t.name}. +${xp} xp`); saveChar();
   }
@@ -2409,7 +2784,7 @@ function statLines(it) {
   if (it.dmg) h += `<div>${it.dmg} Weapon Damage</div>`;
   if (it.stats.armor) h += `<div>${it.stats.armor} Armor</div>`;
   for (const k of ['sta', 'agi', 'int']) if (it.stats[k]) h += `<div>+${it.stats[k]} ${STAT_NAME[k]}</div>`;
-  for (const k of ['crit', 'haste']) if (it.stats[k]) h += `<div class="g">Equip: +${it.stats[k]} ${STAT_NAME[k]} rating</div>`;
+  for (const k of ['crit', 'haste']) if (it.stats[k]) h += `<div class="g">Equip: +${it.stats[k]} ${STAT_NAME[k]} rating (+${(it.stats[k] / 8).toFixed(1)}%)</div>`;
   return h;
 }
 function itemTipHtml(it, label) {
@@ -2436,7 +2811,10 @@ function showTip(html, ev) {
 function hideTip() { tipEl.hidden = true; }
 function skillTipHtml(sk) {
   const locked = P.lvl < sk.lvl;
-  return `<div class="tt"><span class="nm">${esc(sk.name)}</span><div class="row m"><span>${sk.range ? sk.range + ' yd range' : 'Instant'}</span><span>${skillCd(sk) >= 1.5 ? Math.round(skillCd(sk) * 10) / 10 + ' sec cooldown' : ''}</span></div>
+  const res = sk.cost ? (CH.cls === 'rogue' || sk.inForm === 'cat' ? 'energy' : CH.cls === 'archer' ? 'focus' : sk.inForm === 'bear' ? 'rage' : 'mana') : null;
+  const costTxt = res ? (res === 'mana' ? `${Math.round(sk.cost / 100 * (P.manaMax || 100))} mana` : `${sk.cost} ${res}`) : '';
+  return `<div class="tt"><span class="nm">${esc(sk.name)}</span><div class="row m"><span>${costTxt}</span><span>${sk.range ? sk.range + ' yd range' : ''}</span></div>
+    <div class="row m"><span>${sk.cast ? sk.cast + ' sec cast' : 'Instant'}</span><span>${skillCd(sk) >= 1.5 ? Math.round(skillCd(sk) * 10) / 10 + ' sec cooldown' : ''}</span></div>
     <div class="desc">${esc(sk.desc)}</div>${locked ? `<div class="r">Unlocks at level ${sk.lvl}</div>` : ''}</div>`;
 }
 // Hover tooltips for anything with data-tip.
@@ -2520,6 +2898,20 @@ function refreshPanels() {
 }
 
 /* ---------------- character panel ---------------- */
+const STAT_DESC = {
+  'Health': 'How much damage you can take before you fall. Raised by Stamina.',
+  'Attack power': 'Your base damage. Every attack and spell scales from it. Raised by your main stat and your weapon.',
+  'Mana': 'Pays for spells. Raised by Intellect. Refills slowly in combat and quickly out of combat.',
+  'Stamina': 'Each point gives 10 maximum health.',
+  'Agility': 'Main stat for Rogues, Archers and Druids in cat or bear form. Each point raises attack power.',
+  'Intellect': 'Main stat for Warlocks and Druids in caster form. Raises attack power and maximum mana.',
+  'Critical strike': 'Chance for an attack, spell or heal to do double. Comes from gear (8 rating = 1%), your race and talents.',
+  'Haste': 'Speeds up auto-attacks, cast times, cooldowns and energy or focus regeneration. 8 rating = 1%.',
+  'Armor': 'Reduces the damage monsters deal to you. The % is the reduction against a monster of your level.',
+  'Move speed': 'How fast you run. You also run 25% faster when you are out of combat.',
+  'Item level': 'The average level of your equipped gear. Higher is better. Empty slots count as zero.',
+  'Talent points': 'Points spent out of points earned. You earn one every level from level 10. Press N to spend them.',
+};
 const prev = { renderer: null, scene: null, cam: null, model: null, yaw: 0.3, dirty: true };
 function initPreview() {
   const c = $('charCanvas');
@@ -2553,7 +2945,9 @@ function renderChar() {
   const rows = [['Health', P.maxHp], ['Attack power', Math.round(atk())], ['Stamina', st.sta], [prim === 'agi' ? 'Agility' : 'Intellect', st[prim]],
     ['Critical strike', P.critPct.toFixed(1) + '%'], ['Haste', P.haste.toFixed(1) + '%'], ['Armor', `${P.armor} (${Math.round(armorDR(P.lvl) * 100)}%)`], ['Move speed', Math.round(P.speedMul * 100) + '%'],
     ['Item level', Math.round(GEAR_SLOTS.reduce((a, s) => a + (CH.equip[s] ? CH.equip[s].ilvl : 0), 0) / GEAR_SLOTS.length * 10) / 10], ['Talent points', `${talentSpent()} / ${talentPoints()}`]];
-  $('charStats').innerHTML = rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+  if (P.manaMax) rows.splice(2, 0, ['Mana', P.manaMax]);
+  $('charStats').innerHTML = rows.map(([k, v]) => `<button class="srow" data-k="${k}" data-tip="txt:${encodeURIComponent(k + ': ' + (STAT_DESC[k] || ''))}"><span>${k}</span><b>${v}</b></button>`).join('') + `<p class="sdesc" id="statDesc">${isTouch() ? 'Tap' : 'Hover over or click'} a stat to see what it does.</p>`;
+  $('charStats').querySelectorAll('.srow').forEach((b) => b.addEventListener('click', () => { $('statDesc').innerHTML = `<b>${b.dataset.k}.</b> ${STAT_DESC[b.dataset.k] || ''}`; }));
   wireItemSlots($('winChar'));
 }
 
@@ -2649,22 +3043,28 @@ function renderSpells() {
 function buildBar() {
   if (!CH) return;
   const bar = $('abar'); let h = '';
-  if (!isTouch()) h += `<div class="slot" style="cursor:default" data-tip="txt:${encodeURIComponent('Basic attack. Click on the world or press F.')}"><span class="k">F</span><span class="ic" style="background:${hex(CLASSES[CH.cls].color)};display:grid;place-items:center;font-weight:800;font-size:12px">ATK</span></div>`;
+  const bs = basicSkill();
+  if (!isTouch()) h += bs ? `<button class="slot" id="atkSlot" data-tip="s:${bs.id}"><span class="k">F</span><img class="ic" src="${skillIcon(bs)}" alt="${esc(bs.name)}"><span class="cdv"></span></button>`
+    : `<button class="slot" id="atkSlot" data-tip="txt:${encodeURIComponent('Auto Attack: click a monster or press F. You keep attacking until it dies.')}"><span class="k">F</span><span class="ic" style="background:${hex(CLASSES[CH.cls].color)};display:grid;place-items:center;font-weight:800;font-size:11px">AUTO</span><span class="cdv"></span></button>`;
   barSkills().forEach((sk, i) => { h += `<button class="slot" data-slot="${i}" data-tip="s:${sk.id}"><span class="k">${i + 1}</span><img class="ic" src="${skillIcon(sk)}" alt="${esc(sk.name)}"><span class="cdv"></span></button>`; });
   h += `<button class="slot" id="potSlot" data-tip="txt:${encodeURIComponent('Healing Potion: restore 45% of your health (Q).')}"><span class="k">Q</span><span class="ic" style="background:radial-gradient(circle at 40% 35%,#ffb0b8,#d8344a 60%,#5a0a1a);border-radius:50%"></span><span class="n" id="potN"></span><span class="cdv"></span></button>`;
   bar.innerHTML = h;
   bar.querySelectorAll('[data-slot]').forEach((b) => b.addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); hideTip(); useSlot(+b.dataset.slot); }));
   $('potSlot').addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); drinkPotion(); });
+  if ($('atkSlot')) $('atkSlot').addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); hideTip(); startAttack(); });
 }
 function updateBar() {
   const list = barSkills();
   $('abar').querySelectorAll('[data-slot]').forEach((b) => {
     const sk = list[+b.dataset.slot]; if (!sk) return; const id = sk.cdId || sk.id, left = cds[id] || 0, locked = P.lvl < sk.lvl;
     b.classList.toggle('locked', locked); b.classList.toggle('active', !!sk.form && sk.form === P.form);
-    b.style.setProperty('--cd', locked ? 0 : left > 0 ? (left / skillCd(sk)).toFixed(3) : 0);
+    const frac = Math.max(left > 0 ? left / skillCd(sk) : 0, !sk.offGcd && P.gcd > 0 ? P.gcd / gcdTime() : 0);
+    b.style.setProperty('--cd', locked ? 0 : frac.toFixed(3));
+    b.classList.toggle('nores', !locked && skillCost(sk) > P.res[resType()]);
     b.querySelector('.cdv').textContent = locked ? 'Lv ' + sk.lvl : left > 0.05 && skillCd(sk) > 1.5 ? Math.ceil(left) : '';
     if (sk.range) { const t = target && !target.dead ? dist(target) - target.T.radius : 0; b.classList.toggle('oor', !!target && t > sk.range); }
   });
+  const as = $('atkSlot'); if (as) { as.classList.toggle('active', P.autoAtk); const bs = basicSkill(); if (bs) as.style.setProperty('--cd', P.gcd > 0 ? (P.gcd / gcdTime()).toFixed(3) : 0); }
   const ps = $('potSlot'); if (ps) { $('potN').textContent = P.potions; ps.style.setProperty('--cd', (cds.potion || 0) > 0 ? cds.potion / 3 : 0); }
 }
 
@@ -2672,6 +3072,8 @@ function updateBar() {
 const BUFF_INFO = { stealth: ['Stealth', 0x5a4a6a], poison: ['Poison', 0x6fd04a], flurry: ['Flurry', 0xff6a6a], dance: ['Dance', 0x9a5aff], rapid: ['Rapid', 0xff9a3a], hot: ['Regen', 0x7ae08a], tranq: ['Tranq', 0xbfff9a], dash: ['Dash', 0xe0d05a], fury: ['Fury', 0xff9a3a] };
 function updateHUD(skyTxt) {
   $('pName').textContent = CH.name; $('pLvl').textContent = P.lvl;
+  const rt = resType(), rm = resMax(rt); $('pRes').style.width = (P.res[rt] / rm * 100) + '%'; $('pRes').style.background = RES[rt].color; $('pResTxt').textContent = `${RES[rt].name} ${Math.floor(P.res[rt])} / ${rm}`;
+  $('pframe').classList.toggle('combat', clock - P.lastCombat < 5);
   $('pHp').style.width = (P.hp / P.maxHp * 100) + '%'; $('pHpTxt').textContent = `${Math.ceil(P.hp)} / ${P.maxHp}`; $('pSt').style.width = P.stam + '%';
   const xn = xpNext(P.lvl); $('xpFill').style.width = (P.lvl >= MAX_LVL ? 100 : P.xp / xn * 100) + '%'; $('xpTxt').textContent = P.lvl >= MAX_LVL ? 'Max level' : `XP ${P.xp} / ${xn}`;
   $('clock').textContent = skyTxt;
@@ -2683,7 +3085,7 @@ function updateHUD(skyTxt) {
   $('buffs').innerHTML = Object.entries(P.buffs).map(([k, b]) => { const inf = BUFF_INFO[k] || [k, 0x888888]; return `<div class="buff" style="border-color:${hex(inf[1])}" data-tip="txt:${encodeURIComponent(inf[0])}">${inf[0].slice(0, 4)}<b>${Math.ceil(b.t)}</b></div>`; }).join('')
     + pets.map((p) => `<div class="buff" style="border-color:#ff9a5a">${p.kind.slice(0, 4)}<b>${p.perm ? '' : Math.ceil(p.t)}</b></div>`).join('');
   const near = !P.dead && !anyOpen() ? nearestInteract() : null, pe = $('prompt');
-  if (near) { const k = isTouch() ? 'Tap Use' : 'Press E'; pe.textContent = near.kind === 'npc' ? `${k} to talk to ${near.n.def.name}` : `${k} to ${GATHER[near.nd.kind].verb.toLowerCase()} ${GATHER[near.nd.kind].name}`; pe.hidden = false; } else pe.hidden = true;
+  if (near) { const k = isTouch() ? 'Tap Use' : 'Press E'; pe.textContent = near.kind === 'npc' ? `${k} to talk to ${near.n.def.name}` : near.kind === 'gate' ? `${k} to enter ${near.d.name} (level ${near.d.lv[0]}-${near.d.lv[1]})` : near.kind === 'exit' ? `${k} to leave the dungeon` : near.kind === 'chest' ? `${k} to open the chest` : `${k} to ${GATHER[near.nd.kind].verb.toLowerCase()} ${GATHER[near.nd.kind].name}`; pe.hidden = false; } else pe.hidden = true;
   updateBar();
 }
 
@@ -2733,6 +3135,7 @@ function questPoints() {
       if (a.p[i] >= o.n) return; let best = null, bd = 1e9;
       if (o.t === 'gather') { for (const nd of nodes) if (nd.on && nd.kind === o.k) { const d = Math.hypot(nd.x - P.x, nd.z - P.z); if (d < bd) { bd = d; best = nd; } } }
       else for (const e of enemies) if (!e.dead && (o.t === 'kill' ? e.type === o.m : o.m.includes(e.base) && !e.named)) { const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; best = e; } }
+      if (!best && o.t === 'kill' && NAMED[o.m] && NAMED[o.m].dungeon && !DUN.cur) { const gd = DUNGEONS.find((d) => d.boss === o.m || d.mini === o.m); if (gd) best = PLACES[gd.gate]; }
       if (best) pts.push({ x: best.x, z: best.z });
     });
   }
@@ -2745,6 +3148,7 @@ function drawMinimap() {
   const dpr = Math.min(devicePixelRatio, 2), W = Math.round(r.width * dpr); if (c.width !== W) { c.width = c.height = W; }
   const x = c.getContext('2d'), span = 220, s = W / 160;
   x.save(); x.clearRect(0, 0, W, W); x.beginPath(); x.arc(W / 2, W / 2, W / 2, 0, 7); x.clip();
+  if (DUN.cur) { drawDungeonMap(x, W, s); arrowAt(x, W / 2, W / 2, Math.atan2(Math.cos(P.face), Math.sin(P.face)), s, '#ffffff'); x.restore(); return; }
   const sx = (P.x - span / 2 + HALF) / 4, sz = (P.z - span / 2 + HALF) / 4; x.imageSmoothingEnabled = true;
   x.drawImage(mapBase, sx, sz, span / 4, span / 4, 0, 0, W, W);
   const toM = (wx, wz) => [((wx - P.x) / span + 0.5) * W, ((wz - P.z) / span + 0.5) * W];
@@ -2834,7 +3238,7 @@ function renderSettings() {
   $('setSens').value = SENS;
   document.querySelectorAll('#setStyle button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === STYLE_ID)));
 }
-$('setStyle').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.dataset.v === STYLE_ID) return; store.set('ev-style', b.dataset.v); saveChar(); location.reload(); });
+$('setStyle').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.dataset.v === STYLE_ID) return; store.set('ev-style2', b.dataset.v); saveChar(); location.reload(); });
 $('setGfx').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; GFX = b.dataset.v; store.set('ev-gfx', GFX); applyGfx(); renderSettings(); });
 $('setPlates').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; showPlates = b.dataset.v === 'on'; store.set('ev-plates', showPlates); renderSettings(); });
 $('setSens').addEventListener('input', (e) => { SENS = +e.target.value; store.set('ev-sens', SENS); });
@@ -2856,7 +3260,7 @@ function previewChar(c) {
   rebuildHero(); hero.g.rotation.y = 0;
 }
 function toSelect() {
-  saveChar(); setMode('select'); dismissPets(); target = null;
+  saveChar(); if (DUN.cur) leaveDungeon(); setMode('select'); dismissPets(); target = null;
   $('select').hidden = false; $('creator').hidden = true; $('dead').hidden = true; $('delBox').innerHTML = '';
   if (!STORE.chars.length) { openCreator(); return; }
   if (!STORE.chars.find((c) => c.id === selId)) selId = STORE.last && STORE.chars.find((c) => c.id === STORE.last) ? STORE.last : STORE.chars[0].id;
@@ -2883,11 +3287,11 @@ function enterWorld(c) {
   CH = c; STORE.last = c.id;
   if (!CH.quests) CH.quests = { active: {}, done: {} };
   if (!CH.talents) CH.talents = {}; if (!CH.towns) CH.towns = { emberfall: true }; if (!CH.inv) CH.inv = new Array(32).fill(null); if (!CH.equip) CH.equip = starterGear(CH.cls);
-  Object.assign(P, { lvl: c.lvl, xp: c.xp, gold: c.gold, potions: c.potions, form: CH.cls === 'druid' ? c.form || 'caster' : 'caster', dead: false, buffs: {}, attackT: -1, dash: null, vy: 0, invuln: 0, stam: 100 });
+  Object.assign(P, { lvl: c.lvl, xp: c.xp, gold: c.gold, potions: c.potions, form: CH.cls === 'druid' ? c.form || 'caster' : 'caster', dead: false, buffs: {}, attackT: -1, dash: null, vy: 0, invuln: 0, stam: 100, autoAtk: false, swingT: 0, gcd: 0, cast: null });
   P.x = c.x ?? 0; P.z = c.z ?? 12; if (Math.hypot(P.x, P.z) > 560 || groundAt(P.x, P.z) < -2) { P.x = 0; P.z = 12; }
   P.y = groundAt(P.x, P.z); P.face = Math.PI; dayT = c.dayT ?? 0.1;
   for (const k in cds) delete cds[k];
-  recalcStats(false); P.hp = P.maxHp; rebuildHero(); dismissPets(); target = null;
+  recalcStats(false); P.hp = P.maxHp; P.res = { energy: 100, focus: 100, mana: P.manaMax, rage: 0 }; rebuildHero(); dismissPets(); target = null;
   $('select').hidden = true; $('creator').hidden = true; setMode('play');
   camYaw = 0; camPitch = 0.36; camLook.set(P.x, P.y + 1.7, P.z); lastZone = null;
   buildBar(); renderTracker(); canvas.focus(); cullChunks(P.x, P.z);
@@ -2897,7 +3301,7 @@ function enterWorld(c) {
 }
 
 /* ---------------- creator ---------------- */
-let draft = null, suggested = '';
+let draft = null, suggested = '', prevForm = 'caster';
 function openCreator() {
   setMode('create'); $('select').hidden = true; $('creator').hidden = false; $('nameErr').hidden = true;
   draft = { name: '', race: 'elf', sex: 'female', cls: 'rogue', skin: 0, hair: 4, style: 2, eye: 1 };
@@ -2918,8 +3322,11 @@ function renderCreator() {
   $('charName').placeholder = suggested;
   const list = classSkills(draft.cls).filter((s) => s.lvl <= 6 && (!s.inForm || s.lvl <= 2)).slice(0, 6);
   $('charInfo').innerHTML = `<div class="trait">${RACES[draft.race].trait}</div><div><b>${CLASSES[draft.cls].name}.</b> ${CLASSES[draft.cls].blurb} Wears ${CLASSES[draft.cls].armor}. Learns 8 skills by level 18 and talents from level 10.</div><ul>${list.map((a) => `<li><b>${a.name}.</b> ${a.desc}</li>`).join('')}</ul>`;
+  if (draft.cls !== 'druid') prevForm = 'caster';
+  $('formPrev').hidden = draft.cls !== 'druid';
+  seg($('formPrev'), [['caster', 'Preview: Caster'], ['cat', 'Cat form'], ['bear', 'Bear form']], prevForm, (k) => { prevForm = k; renderCreator(); });
   const c = Object.assign({}, draft, { name: draft.name || suggested, equip: starterGear(draft.cls) });
-  CH = c; P.form = 'caster'; P.x = PREVIEW_SPOT.x; P.z = PREVIEW_SPOT.z; P.y = groundAt(P.x, P.z); P.buffs = {}; rebuildHero();
+  CH = c; P.form = prevForm; P.x = PREVIEW_SPOT.x; P.z = PREVIEW_SPOT.z; P.y = groundAt(P.x, P.z); P.buffs = {}; rebuildHero();
 }
 $('btnBack').onclick = () => { if (STORE.chars.length) toSelect(); };
 $('btnMake').onclick = () => {
@@ -2975,7 +3382,7 @@ function interact() {
   if (P.dead || mode !== 'play') return;
   if (!$('winNpc').hidden) { closeWin('winNpc'); return; }
   const near = nearestInteract(); if (!near) return;
-  if (near.kind === 'npc') { const n = near.n; openNpc(n); } else gatherNode(near.nd);
+  if (near.kind === 'npc') { const n = near.n; openNpc(n); } else if (near.kind === 'gate') enterDungeon(near.d); else if (near.kind === 'exit') leaveDungeon(); else if (near.kind === 'chest') openChest(); else gatherNode(near.nd);
 }
 
 /* ---------------- pointer ---------------- */
@@ -3040,9 +3447,10 @@ function updateSky(dt) {
   sun.position.normalize().multiplyScalar(110).add(_v3.set(P.x, P.y, P.z)); sun.target.position.set(P.x, P.y, P.z);
   stars.material.opacity = 1 - smooth(-0.2, 0.1, sh);
   const cc = 0.35 + 0.65 * df; for (const c of clouds) { const u = c.userData; u.a += u.sp * dt; c.position.set(camera.position.x + Math.cos(u.a) * u.r, u.y, camera.position.z + Math.sin(u.a) * u.r); c.material.color.setRGB(cc, cc, cc + 0.05 * (1 - df)).lerp(tmpC.set(0xffb08a), dusk * 0.4); }
-  for (const f of fires) { f.l.intensity = (f.base + (1 - df) * 1.5) * (0.85 + Math.random() * 0.3); f.f.scale.y = 0.85 + Math.random() * 0.35; }
-  if (lavaLight) lavaLight.intensity = 1.4 + Math.random() * 0.4;
+  fires.forEach((f, i) => { f.l.intensity = (f.base + (1 - df) * 1.2) * (0.96 + 0.04 * Math.sin(clock * 2.2 + i * 1.7)); f.f.scale.y = 0.95 + 0.06 * Math.sin(clock * 3 + i); });
+  if (lavaLight) lavaLight.intensity = 1.5 + 0.1 * Math.sin(clock * 1.3);
   skyDome.position.copy(camera.position); stars.position.copy(camera.position);
+  if (DUN.cur) dungeonEnv();
   const hrs = dayT < 0.65 ? 6 + (dayT / 0.65) * 12 : (18 + ((dayT - 0.65) / 0.35) * 12) % 24, hh = Math.floor(hrs), mm = Math.floor((hrs - hh) * 6) * 10;
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
@@ -3065,6 +3473,7 @@ function updatePlayer(dt) {
   let moving = false, sprint = false;
   const inCombat = clock - P.lastCombat < 5;
   const formSpd = CH.cls === 'druid' ? (P.form === 'cat' ? 1.25 : P.form === 'bear' ? 0.95 : 1) : 1;
+  const px0 = P.x, pz0 = P.z;
   if (len > 0.08 && !P.dash) {
     const n = Math.max(1, len); ix /= n; iz /= n;
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = -fz, rz = fx, mx = fx * iz + rx * ix, mz = fz * iz + rz * ix;
@@ -3075,16 +3484,18 @@ function updatePlayer(dt) {
   if (P.dash) { P.x += P.dash.vx * dt; P.z += P.dash.vz * dt; P.dash.t -= dt; if (P.dash.t <= 0) P.dash = null; }
   P.stam = clamp(P.stam + (sprint && moving ? -24 : 20) * dt, 0, 100);
   collide(P, druidForm && P.form === 'bear' ? 0.9 : 0.5);
-  const r = Math.hypot(P.x, P.z); if (r > 548) { P.x *= 548 / r; P.z *= 548 / r; }
+  if (DUN.cur) { if (!walkable(P.x, P.z)) { if (walkable(P.x, pz0)) P.z = pz0; else if (walkable(px0, P.z)) P.x = px0; else { P.x = px0; P.z = pz0; } if (!walkable(P.x, P.z)) { P.x = DUN.cur.ox + DUN_START.x; P.z = DUN.cur.oz + DUN_START.z; } } }
+  else { const r = Math.hypot(P.x, P.z); if (r > 548) { P.x *= 548 / r; P.z *= 548 / r; } }
   const g2 = Math.max(groundAt(P.x, P.z), -1.15);
   P.vy -= 26 * dt; P.y += P.vy * dt;
   if (P.y <= g2 || (P.onGround && P.y - g2 < 0.7 && P.vy <= 0)) { P.y = g2; P.vy = 0; P.onGround = true; } else P.onGround = false;
   // regeneration and timers
-  if (clock - P.lastHurt > 6) heal(P.maxHp * (inCombat ? 0.01 : 0.04) * dt, false);
+  if (clock - P.lastHurt > 6) heal(P.maxHp * (inCombat ? 0.005 : 0.025) * dt, false);
   if (R.swim && inWater) heal(P.maxHp * 0.05 * dt, false);
   for (const k in P.buffs) { const b = P.buffs[k]; if (b.hps) heal(b.hps * dt, false); b.t -= dt; if (b.t <= 0) { delete P.buffs[k]; if (k === 'stealth') setGhostAll(false); if (k === 'poison') for (const m of hero.blades) m.emissive.setHex(0x111111); } }
   const hm = hasteMul(); for (const k in cds) if (cds[k] > 0) cds[k] -= dt * (k === 'potion' ? 1 : hm);
   P.invuln -= dt;
+  updateRes(dt); updateCast(dt, moving || !!P.dash); updateAuto(dt);
   // attack
   P.walk += dt * (moving ? (sprint ? 15 : 10) : 0);
   let act = -1, actKind = null;
@@ -3107,11 +3518,13 @@ function updateCamera(dt) {
   if (mode === 'select' || mode === 'create') {
     previewYaw += dt * 0.12; const m = CH && CH.cls === 'druid' && P.form === 'bear' ? 1.4 : 1, d = 5.6 * m, h = RACE_SHAPE[CH ? CH.race : 'human'].h;
     if (hero) { hero.g.position.set(P.x, P.y, P.z); hero.g.rotation.y = previewYaw; animBiped(hero, 0, false, -1); }
+    for (const m of [cat, bear]) if (m) { m.g.position.set(P.x, P.y, P.z); m.g.rotation.y = previewYaw; }
     camera.position.set(P.x + Math.sin(0.5) * d, P.y + 2.0 * h, P.z + Math.cos(0.5) * d); camera.lookAt(P.x, P.y + 1.25 * h, P.z); return;
   }
   const tx = P.x, ty = P.y + 1.7, tz = P.z;
   camLook.x += (tx - camLook.x) * Math.min(1, dt * 10); camLook.y += (ty - camLook.y) * Math.min(1, dt * 6); camLook.z += (tz - camLook.z) * Math.min(1, dt * 10);
-  const d = camDist * (CH.cls === 'druid' && P.form === 'bear' ? 1.2 : 1);
+  let d = camDist * (CH.cls === 'druid' && P.form === 'bear' ? 1.2 : 1);
+  if (DUN.cur) { while (d > 2.5 && !walkable(camLook.x + Math.sin(camYaw) * Math.cos(camPitch) * d, camLook.z + Math.cos(camYaw) * Math.cos(camPitch) * d)) d -= 0.5; }
   const cx = camLook.x + Math.sin(camYaw) * Math.cos(camPitch) * d, cz = camLook.z + Math.cos(camYaw) * Math.cos(camPitch) * d;
   let cy = camLook.y + Math.sin(camPitch) * d; cy = Math.max(cy, Math.max(groundAt(cx, cz), 0) + 0.8);
   camera.position.set(cx, cy, cz);
@@ -3128,7 +3541,7 @@ function frame(now) {
   if (play) {
     updatePlayer(dt);
     for (const e of enemies) updateEnemy(e, dt);
-    updatePets(dt); updateProjectiles(dt); updateTeles(dt);
+    updatePets(dt); updateProjectiles(dt); updateTeles(dt); updateDungeon(dt);
     for (let i = timers.length - 1; i >= 0; i--) { timers[i].t -= dt; if (timers[i].t <= 0) { const f = timers[i].fn; timers.splice(i, 1); f(); } }
   }
   updateFx(dt);
@@ -3140,11 +3553,12 @@ function frame(now) {
   if (t05 <= 0) {
     t05 = 0.5; cullChunks(play ? P.x : camera.position.x, play ? P.z : camera.position.z);
     if (play) { discoverTowns(); mmQuest = questPoints();
-      const z = zoneAt(P.x, P.z); if (z !== lastZone) { lastZone = z; $('zoneName').textContent = z.name; $('zbName').textContent = z.name; $('zbSub').textContent = `${z.sub} · Level ${z.lv[0]}-${z.lv[1]}`; const zb = $('zoneBanner'); zb.classList.add('show'); setTimeout(() => zb.classList.remove('show'), 3500); } }
+      const z = DUN.cur ? { name: DUN.cur.name, sub: 'Dungeon', lv: DUN.cur.lv, id: DUN.cur.id } : zoneAt(P.x, P.z); if (z.id !== (lastZone && lastZone.id)) { lastZone = z; $('zoneName').textContent = z.name; $('zbName').textContent = z.name; $('zbSub').textContent = `${z.sub} · Level ${z.lv[0]}-${z.lv[1]}`; const zb = $('zoneBanner'); zb.classList.add('show'); setTimeout(() => zb.classList.remove('show'), 3500); } }
   }
   if (play) {
     if (t01 <= 0) { t01 = 0.1; updateHUD(skyTxt); drawMinimap(); }
     updatePlates(); renderPreview(dt);
+    const cb = $('castbar'); if (P.cast) { cb.hidden = false; $('castFill').style.width = Math.min(100, P.cast.t / P.cast.dur * 100) + '%'; $('castTxt').textContent = P.cast.sk.name; } else if (!cb.hidden) cb.hidden = true;
     if (!$('winMap').hidden && Math.floor(clock * 2) !== Math.floor((clock - dt) * 2)) renderBigMap();
     saveT += dt; if (saveT > 15) { saveT = 0; saveChar(); }
     if (curNpc && !$('winNpc').hidden && Math.hypot(curNpc.x - P.x, curNpc.z - P.z) > 8) closeWin('winNpc');
@@ -3168,7 +3582,7 @@ spawnNpcs();
 spawnAll();
 initPreview();
 STORE = loadStore();
-window.__emberfall = { P, enemies, npcs, nodes, renderer, hurtPlayer, scene, chunks, get CH() { return CH; }, gainXP, setTarget, addItem, genItem };
+window.__emberfall = { P, enemies, npcs, nodes, renderer, hurtPlayer, scene, chunks, DUN, DUNGEONS, dealDamage, get CH() { return CH; }, gainXP, setTarget, addItem, genItem };
 M = freshMods();
 toSelect();
 requestAnimationFrame(frame);

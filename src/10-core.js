@@ -57,6 +57,16 @@ const PLACES = {
   impFlats: { x: 390, z: 20, r: 45 },
   boneYard: { x: 430, z: -110, r: 40 },
   moltenRuins: { x: 470, z: -190, r: 30, name: 'Molten Ruins' },
+  duskHollow: { x: -280, z: -70, r: 40 },
+  dryadGlade: { x: -330, z: 160, r: 40 },
+  serpentBank: { x: 150, z: 430, r: 45 },
+  frostQuarry: { x: -170, z: -335, r: 40 },
+  scorchDunes: { x: 330, z: -185, r: 45 },
+  hideoutGate: { x: 150, z: -138, r: 9, name: 'Bandit Hideout' },
+  webwoodGate: { x: -495, z: 118, r: 9, name: 'Webwood Hollow' },
+  templeGate: { x: 100, z: 486, r: 9, name: 'Sunken Temple' },
+  catacombGate: { x: 60, z: -495, r: 9, name: 'Frozen Catacombs' },
+  cinderGate: { x: 495, z: -60, r: 9, name: 'Heart of Cinder' },
 };
 const ROADS = TOWNS.slice(1).map((t) => [TOWNS[0], t]).concat([[TOWN.ashfall, PLACES.moltenRuins]]);
 
@@ -114,6 +124,7 @@ function heightAt(x, z) {
 const H = new Float32Array((SEG + 1) * (SEG + 1));
 for (let iz = 0; iz <= SEG; iz++) for (let ix = 0; ix <= SEG; ix++) H[iz * (SEG + 1) + ix] = heightAt(-HALF + ix * STEP, -HALF + iz * STEP);
 function groundAt(x, z) {
+  if (x > 1500) return 0;
   const gx = clamp((x + HALF) / STEP, 0, SEG - 1e-4), gz = clamp((z + HALF) / STEP, 0, SEG - 1e-4);
   const ix = Math.floor(gx), iz = Math.floor(gz), u = gx - ix, v = gz - iz, W = SEG + 1;
   const ha = H[iz * W + ix], hd = H[iz * W + ix + 1], hb = H[(iz + 1) * W + ix], hc = H[(iz + 1) * W + ix + 1];
@@ -165,8 +176,8 @@ const STYLES = {
   twilight: { name: 'Twilight Festival', grad: [70, 130, 195, 240], ink: 0x1a1030, tint: 0xffe2cc, day: [0x3a9cff, 0xb8dcff], dusk: [0x4a3aa8, 0xff9a6a], night: [0x0a1030, 0x28305a], hemi: 1.05, sun: 1.1, sunCol: 0xfff4e0, fog: 0.9, lockT: 0.615, css: 'saturate(1.15)' },
   moonlit: { name: 'Moonlit Night', grad: [70, 120, 190, 235], ink: 0x0a0a20, tint: 0xd8e4ff, day: [0x3a9cff, 0xb8dcff], dusk: [0x4a3aa8, 0xff9a6a], night: [0x101c58, 0x3a4a90], hemi: 1.6, sun: 1, sunCol: 0xfff4e0, fog: 0.8, lockT: 0.86, css: 'brightness(1.2) saturate(1.1)' },
 };
-let STYLE_ID = 'bright';
-try { const q = new URLSearchParams(location.search).get('style'); STYLE_ID = STYLES[q] ? q : STYLES[store.get('ev-style', 'bright')] ? store.get('ev-style', 'bright') : 'bright'; } catch (e) {}
+let STYLE_ID = 'twilight';
+try { const q = new URLSearchParams(location.search).get('style'); STYLE_ID = STYLES[q] ? q : STYLES[store.get('ev-style2', 'twilight')] ? store.get('ev-style2', 'twilight') : 'twilight'; } catch (e) {}
 const ST = STYLES[STYLE_ID];
 if (ST.css) canvas.style.filter = ST.css;
 

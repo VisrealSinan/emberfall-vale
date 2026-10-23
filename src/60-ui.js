@@ -51,7 +51,7 @@ function statLines(it) {
   if (it.dmg) h += `<div>${it.dmg} Weapon Damage</div>`;
   if (it.stats.armor) h += `<div>${it.stats.armor} Armor</div>`;
   for (const k of ['sta', 'agi', 'int']) if (it.stats[k]) h += `<div>+${it.stats[k]} ${STAT_NAME[k]}</div>`;
-  for (const k of ['crit', 'haste']) if (it.stats[k]) h += `<div class="g">Equip: +${it.stats[k]} ${STAT_NAME[k]} rating</div>`;
+  for (const k of ['crit', 'haste']) if (it.stats[k]) h += `<div class="g">Equip: +${it.stats[k]} ${STAT_NAME[k]} rating (+${(it.stats[k] / 8).toFixed(1)}%)</div>`;
   return h;
 }
 function itemTipHtml(it, label) {
@@ -78,7 +78,10 @@ function showTip(html, ev) {
 function hideTip() { tipEl.hidden = true; }
 function skillTipHtml(sk) {
   const locked = P.lvl < sk.lvl;
-  return `<div class="tt"><span class="nm">${esc(sk.name)}</span><div class="row m"><span>${sk.range ? sk.range + ' yd range' : 'Instant'}</span><span>${skillCd(sk) >= 1.5 ? Math.round(skillCd(sk) * 10) / 10 + ' sec cooldown' : ''}</span></div>
+  const res = sk.cost ? (CH.cls === 'rogue' || sk.inForm === 'cat' ? 'energy' : CH.cls === 'archer' ? 'focus' : sk.inForm === 'bear' ? 'rage' : 'mana') : null;
+  const costTxt = res ? (res === 'mana' ? `${Math.round(sk.cost / 100 * (P.manaMax || 100))} mana` : `${sk.cost} ${res}`) : '';
+  return `<div class="tt"><span class="nm">${esc(sk.name)}</span><div class="row m"><span>${costTxt}</span><span>${sk.range ? sk.range + ' yd range' : ''}</span></div>
+    <div class="row m"><span>${sk.cast ? sk.cast + ' sec cast' : 'Instant'}</span><span>${skillCd(sk) >= 1.5 ? Math.round(skillCd(sk) * 10) / 10 + ' sec cooldown' : ''}</span></div>
     <div class="desc">${esc(sk.desc)}</div>${locked ? `<div class="r">Unlocks at level ${sk.lvl}</div>` : ''}</div>`;
 }
 // Hover tooltips for anything with data-tip.
@@ -162,6 +165,20 @@ function refreshPanels() {
 }
 
 /* ---------------- character panel ---------------- */
+const STAT_DESC = {
+  'Health': 'How much damage you can take before you fall. Raised by Stamina.',
+  'Attack power': 'Your base damage. Every attack and spell scales from it. Raised by your main stat and your weapon.',
+  'Mana': 'Pays for spells. Raised by Intellect. Refills slowly in combat and quickly out of combat.',
+  'Stamina': 'Each point gives 10 maximum health.',
+  'Agility': 'Main stat for Rogues, Archers and Druids in cat or bear form. Each point raises attack power.',
+  'Intellect': 'Main stat for Warlocks and Druids in caster form. Raises attack power and maximum mana.',
+  'Critical strike': 'Chance for an attack, spell or heal to do double. Comes from gear (8 rating = 1%), your race and talents.',
+  'Haste': 'Speeds up auto-attacks, cast times, cooldowns and energy or focus regeneration. 8 rating = 1%.',
+  'Armor': 'Reduces the damage monsters deal to you. The % is the reduction against a monster of your level.',
+  'Move speed': 'How fast you run. You also run 25% faster when you are out of combat.',
+  'Item level': 'The average level of your equipped gear. Higher is better. Empty slots count as zero.',
+  'Talent points': 'Points spent out of points earned. You earn one every level from level 10. Press N to spend them.',
+};
 const prev = { renderer: null, scene: null, cam: null, model: null, yaw: 0.3, dirty: true };
 function initPreview() {
   const c = $('charCanvas');
@@ -195,7 +212,9 @@ function renderChar() {
   const rows = [['Health', P.maxHp], ['Attack power', Math.round(atk())], ['Stamina', st.sta], [prim === 'agi' ? 'Agility' : 'Intellect', st[prim]],
     ['Critical strike', P.critPct.toFixed(1) + '%'], ['Haste', P.haste.toFixed(1) + '%'], ['Armor', `${P.armor} (${Math.round(armorDR(P.lvl) * 100)}%)`], ['Move speed', Math.round(P.speedMul * 100) + '%'],
     ['Item level', Math.round(GEAR_SLOTS.reduce((a, s) => a + (CH.equip[s] ? CH.equip[s].ilvl : 0), 0) / GEAR_SLOTS.length * 10) / 10], ['Talent points', `${talentSpent()} / ${talentPoints()}`]];
-  $('charStats').innerHTML = rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+  if (P.manaMax) rows.splice(2, 0, ['Mana', P.manaMax]);
+  $('charStats').innerHTML = rows.map(([k, v]) => `<button class="srow" data-k="${k}" data-tip="txt:${encodeURIComponent(k + ': ' + (STAT_DESC[k] || ''))}"><span>${k}</span><b>${v}</b></button>`).join('') + `<p class="sdesc" id="statDesc">${isTouch() ? 'Tap' : 'Hover over or click'} a stat to see what it does.</p>`;
+  $('charStats').querySelectorAll('.srow').forEach((b) => b.addEventListener('click', () => { $('statDesc').innerHTML = `<b>${b.dataset.k}.</b> ${STAT_DESC[b.dataset.k] || ''}`; }));
   wireItemSlots($('winChar'));
 }
 
@@ -291,22 +310,28 @@ function renderSpells() {
 function buildBar() {
   if (!CH) return;
   const bar = $('abar'); let h = '';
-  if (!isTouch()) h += `<div class="slot" style="cursor:default" data-tip="txt:${encodeURIComponent('Basic attack. Click on the world or press F.')}"><span class="k">F</span><span class="ic" style="background:${hex(CLASSES[CH.cls].color)};display:grid;place-items:center;font-weight:800;font-size:12px">ATK</span></div>`;
+  const bs = basicSkill();
+  if (!isTouch()) h += bs ? `<button class="slot" id="atkSlot" data-tip="s:${bs.id}"><span class="k">F</span><img class="ic" src="${skillIcon(bs)}" alt="${esc(bs.name)}"><span class="cdv"></span></button>`
+    : `<button class="slot" id="atkSlot" data-tip="txt:${encodeURIComponent('Auto Attack: click a monster or press F. You keep attacking until it dies.')}"><span class="k">F</span><span class="ic" style="background:${hex(CLASSES[CH.cls].color)};display:grid;place-items:center;font-weight:800;font-size:11px">AUTO</span><span class="cdv"></span></button>`;
   barSkills().forEach((sk, i) => { h += `<button class="slot" data-slot="${i}" data-tip="s:${sk.id}"><span class="k">${i + 1}</span><img class="ic" src="${skillIcon(sk)}" alt="${esc(sk.name)}"><span class="cdv"></span></button>`; });
   h += `<button class="slot" id="potSlot" data-tip="txt:${encodeURIComponent('Healing Potion: restore 45% of your health (Q).')}"><span class="k">Q</span><span class="ic" style="background:radial-gradient(circle at 40% 35%,#ffb0b8,#d8344a 60%,#5a0a1a);border-radius:50%"></span><span class="n" id="potN"></span><span class="cdv"></span></button>`;
   bar.innerHTML = h;
   bar.querySelectorAll('[data-slot]').forEach((b) => b.addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); hideTip(); useSlot(+b.dataset.slot); }));
   $('potSlot').addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); drinkPotion(); });
+  if ($('atkSlot')) $('atkSlot').addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); hideTip(); startAttack(); });
 }
 function updateBar() {
   const list = barSkills();
   $('abar').querySelectorAll('[data-slot]').forEach((b) => {
     const sk = list[+b.dataset.slot]; if (!sk) return; const id = sk.cdId || sk.id, left = cds[id] || 0, locked = P.lvl < sk.lvl;
     b.classList.toggle('locked', locked); b.classList.toggle('active', !!sk.form && sk.form === P.form);
-    b.style.setProperty('--cd', locked ? 0 : left > 0 ? (left / skillCd(sk)).toFixed(3) : 0);
+    const frac = Math.max(left > 0 ? left / skillCd(sk) : 0, !sk.offGcd && P.gcd > 0 ? P.gcd / gcdTime() : 0);
+    b.style.setProperty('--cd', locked ? 0 : frac.toFixed(3));
+    b.classList.toggle('nores', !locked && skillCost(sk) > P.res[resType()]);
     b.querySelector('.cdv').textContent = locked ? 'Lv ' + sk.lvl : left > 0.05 && skillCd(sk) > 1.5 ? Math.ceil(left) : '';
     if (sk.range) { const t = target && !target.dead ? dist(target) - target.T.radius : 0; b.classList.toggle('oor', !!target && t > sk.range); }
   });
+  const as = $('atkSlot'); if (as) { as.classList.toggle('active', P.autoAtk); const bs = basicSkill(); if (bs) as.style.setProperty('--cd', P.gcd > 0 ? (P.gcd / gcdTime()).toFixed(3) : 0); }
   const ps = $('potSlot'); if (ps) { $('potN').textContent = P.potions; ps.style.setProperty('--cd', (cds.potion || 0) > 0 ? cds.potion / 3 : 0); }
 }
 
@@ -314,6 +339,8 @@ function updateBar() {
 const BUFF_INFO = { stealth: ['Stealth', 0x5a4a6a], poison: ['Poison', 0x6fd04a], flurry: ['Flurry', 0xff6a6a], dance: ['Dance', 0x9a5aff], rapid: ['Rapid', 0xff9a3a], hot: ['Regen', 0x7ae08a], tranq: ['Tranq', 0xbfff9a], dash: ['Dash', 0xe0d05a], fury: ['Fury', 0xff9a3a] };
 function updateHUD(skyTxt) {
   $('pName').textContent = CH.name; $('pLvl').textContent = P.lvl;
+  const rt = resType(), rm = resMax(rt); $('pRes').style.width = (P.res[rt] / rm * 100) + '%'; $('pRes').style.background = RES[rt].color; $('pResTxt').textContent = `${RES[rt].name} ${Math.floor(P.res[rt])} / ${rm}`;
+  $('pframe').classList.toggle('combat', clock - P.lastCombat < 5);
   $('pHp').style.width = (P.hp / P.maxHp * 100) + '%'; $('pHpTxt').textContent = `${Math.ceil(P.hp)} / ${P.maxHp}`; $('pSt').style.width = P.stam + '%';
   const xn = xpNext(P.lvl); $('xpFill').style.width = (P.lvl >= MAX_LVL ? 100 : P.xp / xn * 100) + '%'; $('xpTxt').textContent = P.lvl >= MAX_LVL ? 'Max level' : `XP ${P.xp} / ${xn}`;
   $('clock').textContent = skyTxt;
@@ -325,7 +352,7 @@ function updateHUD(skyTxt) {
   $('buffs').innerHTML = Object.entries(P.buffs).map(([k, b]) => { const inf = BUFF_INFO[k] || [k, 0x888888]; return `<div class="buff" style="border-color:${hex(inf[1])}" data-tip="txt:${encodeURIComponent(inf[0])}">${inf[0].slice(0, 4)}<b>${Math.ceil(b.t)}</b></div>`; }).join('')
     + pets.map((p) => `<div class="buff" style="border-color:#ff9a5a">${p.kind.slice(0, 4)}<b>${p.perm ? '' : Math.ceil(p.t)}</b></div>`).join('');
   const near = !P.dead && !anyOpen() ? nearestInteract() : null, pe = $('prompt');
-  if (near) { const k = isTouch() ? 'Tap Use' : 'Press E'; pe.textContent = near.kind === 'npc' ? `${k} to talk to ${near.n.def.name}` : `${k} to ${GATHER[near.nd.kind].verb.toLowerCase()} ${GATHER[near.nd.kind].name}`; pe.hidden = false; } else pe.hidden = true;
+  if (near) { const k = isTouch() ? 'Tap Use' : 'Press E'; pe.textContent = near.kind === 'npc' ? `${k} to talk to ${near.n.def.name}` : near.kind === 'gate' ? `${k} to enter ${near.d.name} (level ${near.d.lv[0]}-${near.d.lv[1]})` : near.kind === 'exit' ? `${k} to leave the dungeon` : near.kind === 'chest' ? `${k} to open the chest` : `${k} to ${GATHER[near.nd.kind].verb.toLowerCase()} ${GATHER[near.nd.kind].name}`; pe.hidden = false; } else pe.hidden = true;
   updateBar();
 }
 
@@ -375,6 +402,7 @@ function questPoints() {
       if (a.p[i] >= o.n) return; let best = null, bd = 1e9;
       if (o.t === 'gather') { for (const nd of nodes) if (nd.on && nd.kind === o.k) { const d = Math.hypot(nd.x - P.x, nd.z - P.z); if (d < bd) { bd = d; best = nd; } } }
       else for (const e of enemies) if (!e.dead && (o.t === 'kill' ? e.type === o.m : o.m.includes(e.base) && !e.named)) { const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; best = e; } }
+      if (!best && o.t === 'kill' && NAMED[o.m] && NAMED[o.m].dungeon && !DUN.cur) { const gd = DUNGEONS.find((d) => d.boss === o.m || d.mini === o.m); if (gd) best = PLACES[gd.gate]; }
       if (best) pts.push({ x: best.x, z: best.z });
     });
   }
@@ -387,6 +415,7 @@ function drawMinimap() {
   const dpr = Math.min(devicePixelRatio, 2), W = Math.round(r.width * dpr); if (c.width !== W) { c.width = c.height = W; }
   const x = c.getContext('2d'), span = 220, s = W / 160;
   x.save(); x.clearRect(0, 0, W, W); x.beginPath(); x.arc(W / 2, W / 2, W / 2, 0, 7); x.clip();
+  if (DUN.cur) { drawDungeonMap(x, W, s); arrowAt(x, W / 2, W / 2, Math.atan2(Math.cos(P.face), Math.sin(P.face)), s, '#ffffff'); x.restore(); return; }
   const sx = (P.x - span / 2 + HALF) / 4, sz = (P.z - span / 2 + HALF) / 4; x.imageSmoothingEnabled = true;
   x.drawImage(mapBase, sx, sz, span / 4, span / 4, 0, 0, W, W);
   const toM = (wx, wz) => [((wx - P.x) / span + 0.5) * W, ((wz - P.z) / span + 0.5) * W];
@@ -476,7 +505,7 @@ function renderSettings() {
   $('setSens').value = SENS;
   document.querySelectorAll('#setStyle button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === STYLE_ID)));
 }
-$('setStyle').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.dataset.v === STYLE_ID) return; store.set('ev-style', b.dataset.v); saveChar(); location.reload(); });
+$('setStyle').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.dataset.v === STYLE_ID) return; store.set('ev-style2', b.dataset.v); saveChar(); location.reload(); });
 $('setGfx').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; GFX = b.dataset.v; store.set('ev-gfx', GFX); applyGfx(); renderSettings(); });
 $('setPlates').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; showPlates = b.dataset.v === 'on'; store.set('ev-plates', showPlates); renderSettings(); });
 $('setSens').addEventListener('input', (e) => { SENS = +e.target.value; store.set('ev-sens', SENS); });

@@ -144,21 +144,51 @@ function animBiped(m, phase, moving, act, actKind) {
 }
 
 /* ---------------- druid forms ---------------- */
-function buildBeast(kind, tint) {
+// Druid forms look different for every race. `accent` is the hero's hair colour.
+const BEAST_LOOK = {
+  elf: { cat: { fur: 0x5a4a9a, belly: 0xb8b0e8, eye: 0xd8e8ff, glow: true }, bear: { fur: 0x3a3a72, belly: 0x8a8ac8, eye: 0xd8e8ff, glow: true } },
+  dwarf: { cat: { fur: 0xb08050, belly: 0xe8d0a8, eye: 0x6ad84a }, bear: { fur: 0x6a4a30, belly: 0xb08a62, eye: 0x7a4a2a } },
+  fishfolk: { cat: { fur: 0x3ab0b0, belly: 0xb8f0e8, eye: 0xffe066, glow: true }, bear: { fur: 0x2a7a8a, belly: 0x9ae0d8, eye: 0xffe066, glow: true } },
+  undead: { cat: { fur: 0x7a8a7a, belly: 0x4a544a, eye: 0x7aff8a, glow: true }, bear: { fur: 0x4a5a4a, belly: 0x2e362e, eye: 0x7aff8a, glow: true } },
+};
+function buildBeast(kind, race = 'elf', accent = 0xffffff) {
   const mats = [], M = (c, o) => { const m = toon(c, o); mats.push(m); return m; };
-  const bear = kind === 'bear', fur = M(bear ? 0x7a5236 : 0x2e2a44), belly = M(bear ? 0xb08a62 : 0x4a4466);
+  const L = (BEAST_LOOK[race] || BEAST_LOOK.elf)[kind], bear = kind === 'bear';
+  const fur = M(L.fur), belly = M(L.belly), acc = M(accent), bone = M(0xeee6d4);
   const g = new THREE.Group(), b = new THREE.Group(); g.add(b);
   const body = mesh(G.sph(bear ? 0.95 : 0.55, 16, 12), fur, 0, bear ? 1.5 : 0.95, 0); body.scale.set(bear ? 1 : 0.85, bear ? 0.85 : 0.75, bear ? 1.35 : 1.6); b.add(body);
-  if (bear) { const hump = mesh(G.sph(0.7, 12, 10), fur, 0, 2.05, 0.35); b.add(hump); }
+  b.add(mesh(G.sph(bear ? 0.62 : 0.36, 12, 10), belly, 0, bear ? 1.25 : 0.82, bear ? 0.55 : 0.4));
+  if (bear) b.add(mesh(G.sph(0.7, 12, 10), fur, 0, 2.05, 0.35));
   const head = new THREE.Group(); head.position.set(0, bear ? 2.0 : 1.25, bear ? 1.25 : 0.95); b.add(head);
   head.add(mesh(G.sph(bear ? 0.55 : 0.36, 16, 12), fur));
   const sn = mesh(G.sph(bear ? 0.26 : 0.16, 12, 8), belly, 0, -0.12, bear ? 0.45 : 0.3); sn.scale.set(1, 0.8, 1.2); head.add(sn);
   head.add(mesh(G.sph(0.06, 8, 6), basic(0x1b1626), 0, -0.05, bear ? 0.72 : 0.48, false));
-  for (const s of [-1, 1]) { const ear = bear ? mesh(G.sph(0.16, 10, 8), fur, s * 0.38, 0.4, -0.05) : mesh(G.cone(0.13, 0.32, 4), fur, s * 0.2, 0.36, -0.05); head.add(ear); }
-  addEyes(head, bear ? 0x7a4a2a : 0x8fff6a, { size: bear ? 0.17 : 0.13, x: bear ? 0.2 : 0.13, y: 0.1, z: bear ? 0.45 : 0.3, turn: 0.35, glow: !bear, angry: true });
+  addEyes(head, L.eye, { size: bear ? 0.17 : 0.13, x: bear ? 0.2 : 0.13, y: 0.1, z: bear ? 0.45 : 0.3, turn: 0.35, glow: !!L.glow, angry: true });
+  const ear = (s, geo, y = 0) => { const e = mesh(geo, fur, s * (bear ? 0.38 : 0.2), (bear ? 0.4 : 0.36) + y, -0.05); head.add(e); return e; };
+  if (race === 'elf') {
+    for (const s of [-1, 1]) { const e = ear(s, G.cone(bear ? 0.14 : 0.1, bear ? 0.5 : 0.48, 4), 0.08); e.rotation.z = s * -0.25; }
+    const moon = mesh(new THREE.TorusGeometry(bear ? 0.14 : 0.09, 0.025, 6, 16, Math.PI * 1.3), basic(0xe8f0ff), 0, bear ? 0.3 : 0.2, bear ? 0.48 : 0.32, false); moon.rotation.z = 0.6; head.add(moon);
+    if (bear) for (const s of [-1, 1]) { const a = mesh(G.cyl(0.04, 0.06, 0.6, 5), M(0xd8d0e8), s * 0.25, 0.65, -0.1); a.rotation.z = s * -0.5; head.add(a); const t = mesh(G.cyl(0.03, 0.04, 0.3, 5), M(0xd8d0e8), s * 0.45, 0.85, -0.1); t.rotation.z = s * 0.5; head.add(t); }
+    else for (let i = 0; i < 4; i++) b.add(mesh(G.box(0.62, 0.05, 0.1), acc, 0, 1.25, 0.5 - i * 0.35));
+  } else if (race === 'dwarf') {
+    for (const s of [-1, 1]) { ear(s, bear ? G.sph(0.17, 10, 8) : G.cone(0.13, 0.32, 4)); if (!bear) head.add(mesh(G.cone(0.03, 0.18, 4), acc, s * 0.2, 0.6, -0.05)); }
+    const ruff = mesh(G.sph(bear ? 0.5 : 0.3, 12, 8), acc, 0, bear ? -0.35 : -0.25, bear ? 0.2 : 0.1); ruff.scale.set(1.2, 0.7, 0.8); head.add(ruff);
+    if (bear) for (let i = 0; i < 4; i++) b.add(mesh(new THREE.DodecahedronGeometry(0.38, 0), M(0x8a8a92), (i % 2 - 0.5) * 0.5, 2.35, 0.6 - i * 0.45));
+  } else if (race === 'fishfolk') {
+    for (const s of [-1, 1]) { const f = mesh(G.cone(bear ? 0.22 : 0.14, bear ? 0.5 : 0.36, 3), acc, s * (bear ? 0.42 : 0.24), bear ? 0.2 : 0.2, -0.05); f.scale.set(0.25, 1, 1); f.rotation.z = s * -1.1; head.add(f); }
+    const fin = mesh(G.cone(bear ? 0.5 : 0.3, bear ? 0.9 : 0.6, 3), acc, 0, bear ? 2.5 : 1.35, bear ? 0.1 : 0.1); fin.scale.set(0.15, 1, 1.4); b.add(fin);
+    if (bear) for (let i = 0; i < 3; i++) b.add(mesh(G.sph(0.32, 10, 6), M(0xe8834a), (i - 1) * 0.55, 1.95, -0.6));
+  } else {
+    for (const s of [-1, 1]) ear(s, bear ? G.sph(0.15, 8, 6) : G.cone(0.12, 0.34, 4));
+    for (let i = 0; i < 4; i++) { const r = mesh(G.box(bear ? 1.5 : 0.9, 0.05, 0.06), bone, 0, bear ? 1.2 : 0.75, bear ? 0.4 - i * 0.3 : 0.3 - i * 0.25); r.rotation.x = 0.3; b.add(r); }
+    if (bear) for (let i = 0; i < 5; i++) { const sp = mesh(G.cone(0.12, 0.55, 5), bone, 0, 2.35, 0.8 - i * 0.4); sp.rotation.x = -0.4; b.add(sp); }
+    const jaw = mesh(G.box(bear ? 0.5 : 0.3, 0.06, 0.1), bone, 0, -0.22, bear ? 0.55 : 0.36); head.add(jaw);
+  }
   const legs = []; const lw = bear ? 0.24 : 0.12, lh = bear ? 1.0 : 0.75;
-  for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) { const p = new THREE.Group(); p.position.set(sx * (bear ? 0.5 : 0.24), lh + 0.08, sz * (bear ? 0.75 : 0.62)); p.add(mesh(G.cyl(lw, lw * 0.9, lh, 10), fur, 0, -lh / 2, 0)); b.add(p); legs.push(p); }
-  if (!bear) { const tail = mesh(G.cyl(0.06, 0.04, 1.2, 6), fur, 0, 1.2, -1.35); tail.rotation.x = -0.7; b.add(tail); }
+  for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) { const p = new THREE.Group(); p.position.set(sx * (bear ? 0.5 : 0.24), lh + 0.08, sz * (bear ? 0.75 : 0.62)); p.add(mesh(G.cyl(lw, lw * 0.9, lh, 10), fur, 0, -lh / 2, 0), mesh(G.sph(lw * 1.1, 8, 6), belly, 0, -lh, 0.04)); b.add(p); legs.push(p); }
+  if (!bear) { const tail = mesh(G.cyl(0.06, 0.04, 1.2, 6), fur, 0, 1.2, -1.35); tail.rotation.x = -0.7; b.add(tail);
+    if (race === 'elf' || race === 'dwarf') b.add(mesh(G.sph(0.1, 8, 6), acc, 0, 1.62, -1.85)); if (race === 'fishfolk') { const tf = mesh(G.cone(0.25, 0.4, 3), acc, 0, 1.62, -1.9); tf.scale.set(0.2, 1, 1); b.add(tf); } }
+  else b.add(mesh(G.sph(0.18, 8, 6), fur, 0, 1.6, -1.25));
   bake(g); outline(g, 0.03); g.visible = false; scene.add(g);
   return { g, b, head, legs, mats, body };
 }
@@ -287,11 +317,58 @@ const MODELS = {
     const legs = [legPivot(b, -0.13, 0.45, 0, 0.07, 0.45, m), legPivot(b, 0.13, 0.45, 0, 0.07, 0.45, m)];
     return { g, flash: [m], parts: { head, legs, b }, kind: 'small', h: 1.7 };
   },
+  shroom(def) {
+    const g = new THREE.Group(), cap = toon(def.color), stem = toon(def.color2 || 0xfff0dc), b = new THREE.Group(); g.add(b);
+    const st = mesh(G.cyl(0.32, 0.42, 0.9, 12), stem, 0, 0.75, 0); b.add(st);
+    const c = mesh(new THREE.SphereGeometry(0.85, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), cap, 0, 1.15, 0); c.scale.y = 0.75; b.add(c);
+    const sp = toon(0xffffff); for (let i = 0; i < 6; i++) { const a = i * 1.05, r = 0.55; b.add(mesh(G.sph(0.11, 8, 6), sp, Math.cos(a) * r, 1.5, Math.sin(a) * r)); }
+    const face = new THREE.Group(); face.position.set(0, 0.85, 0); b.add(face); addEyes(face, 0x2a1a2a, { size: 0.2, x: 0.13, y: 0, z: 0.36, turn: 0.35, angry: !!def.angry });
+    const legs = [legPivot(b, -0.18, 0.3, 0, 0.1, 0.3, stem), legPivot(b, 0.18, 0.3, 0, 0.1, 0.3, stem)];
+    return { g, flash: [cap], parts: { legs, b }, kind: 'small', h: 1.8 };
+  },
+  bat(def) {
+    const g = new THREE.Group(), m = toon(def.color), w = toon(def.color2 || 0x3a2a4a, { side: THREE.DoubleSide }), b = new THREE.Group(); g.add(b); b.position.y = 2.2;
+    b.add(mesh(G.sph(0.4, 12, 10), m));
+    const head = new THREE.Group(); head.position.set(0, 0.35, 0.3); b.add(head); head.add(mesh(G.sph(0.3, 12, 10), m));
+    for (const s of [-1, 1]) { const e = mesh(G.cone(0.1, 0.32, 4), m, s * 0.17, 0.3, 0); e.rotation.z = s * -0.3; head.add(e); }
+    addEyes(head, 0xff3a3a, { size: 0.13, x: 0.1, y: 0.02, z: 0.26, turn: 0.35, angry: true, glow: true });
+    const wings = []; for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 0.3, 0.1, 0); const wm = mesh(G.box(1.3, 0.04, 0.7), w, s * 0.65, 0, -0.05); wm.userData.noOutline = true; p.add(wm); b.add(p); wings.push(p); }
+    return { g, flash: [m], parts: { b, wings, base: 2.2 }, kind: 'flyer', h: 3 };
+  },
+  bird(def) {
+    const g = new THREE.Group(), m = toon(def.color), m2 = toon(def.color2 || 0xffffff), b = new THREE.Group(); g.add(b); b.position.y = 2.4;
+    const body = mesh(G.sph(0.5, 14, 10), m); body.scale.set(0.9, 0.9, 1.3); b.add(body); b.add(mesh(G.sph(0.35, 12, 8), m2, 0, -0.1, 0.3));
+    const head = new THREE.Group(); head.position.set(0, 0.45, 0.55); b.add(head); head.add(mesh(G.sph(0.3, 12, 10), m));
+    const beak = mesh(G.cone(0.09, 0.3, 6), toon(0xffb03a), 0, -0.05, 0.32); beak.rotation.x = Math.PI / 2; head.add(beak);
+    addEyes(head, def.eye || 0xffd23a, { size: 0.14, x: 0.12, y: 0.05, z: 0.24, turn: 0.4, angry: true, glow: !!def.glowEyes });
+    const wings = []; for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 0.4, 0.1, 0); const wm = mesh(G.box(1.5, 0.06, 0.8), m, s * 0.75, 0, 0); p.add(wm); const tip = mesh(G.box(0.6, 0.05, 0.5), m2, s * 1.5, 0, -0.15); p.add(tip); b.add(p); wings.push(p); }
+    const tail = mesh(G.box(0.5, 0.05, 0.6), m2, 0, 0, -0.75); tail.rotation.x = 0.3; b.add(tail);
+    if (def.flame) { const f = mesh(G.sph(0.8, 10, 8), glow(0xff7a2a, 0.3), 0, 0, 0, false); f.userData.noOutline = true; b.add(f); }
+    return { g, flash: [m], parts: { b, wings, base: 2.4 }, kind: 'flyer', h: 3.2 };
+  },
+  serpent(def) {
+    const g = new THREE.Group(), m = toon(def.color), m2 = toon(def.color2), b = new THREE.Group(); g.add(b);
+    const segs = []; for (let i = 0; i < 7; i++) { const r = 0.42 - i * 0.04; const sg = mesh(G.sph(r, 12, 10), i % 2 ? m2 : m, 0, r, -i * 0.55); b.add(sg); segs.push(sg); }
+    const head = new THREE.Group(); head.position.set(0, 1.25, 0.45); b.add(head);
+    const hs = mesh(G.sph(0.42, 14, 10), m); hs.scale.set(1, 0.8, 1.3); head.add(hs);
+    b.add(mesh(G.cyl(0.32, 0.4, 0.9, 10), m, 0, 0.75, 0.25));
+    const hood = mesh(G.sph(0.6, 12, 8), m2, 0, 0.05, -0.2); hood.scale.set(1.3, 1, 0.3); head.add(hood);
+    addEyes(head, 0xffe04a, { size: 0.16, x: 0.16, y: 0.08, z: 0.4, turn: 0.4, angry: true, glow: true });
+    for (const s of [-1, 1]) { const f = mesh(G.cone(0.04, 0.2, 5), toon(0xffffff), s * 0.1, -0.2, 0.42); f.rotation.x = Math.PI; head.add(f); }
+    return { g, flash: [m], parts: { b, segs, head }, kind: 'snake', h: 1.9 };
+  },
+  scorpion(def) {
+    const r = MODELS.crab(def); const m = r.flash[0], b = r.parts.b;
+    const tail = new THREE.Group(); tail.position.set(0, 0.9, -0.7); b.add(tail);
+    for (let i = 0; i < 5; i++) { const sg = mesh(G.sph(0.24 - i * 0.02, 10, 8), m, 0, i * 0.32, -i * 0.12 + (i > 2 ? (i - 2) * 0.28 : 0)); tail.add(sg); }
+    const st = mesh(G.cone(0.12, 0.45, 6), toon(0x2a1a1a), 0, 1.45, 0.75); st.rotation.x = 2.2; tail.add(st);
+    r.parts.tail = tail; r.h = 2.4; return r;
+  },
   golem(def) {
-    const g = new THREE.Group(), m = toon(def.color), em = basic(0xff6a2a), b = new THREE.Group(); g.add(b);
+    const g = new THREE.Group(), m = toon(def.color), em = basic(def.core || 0xff6a2a), b = new THREE.Group(); g.add(b);
     const torso = mesh(new THREE.DodecahedronGeometry(1.3, 0), m, 0, 3.4, 0); torso.scale.set(1.1, 1, 0.8); b.add(torso);
     const core = mesh(new THREE.OctahedronGeometry(0.5), em, 0, 3.5, 0.95, false); core.userData.keep = true; b.add(core);
-    const cg = mesh(G.sph(0.9, 10, 8), glow(0xff7a2a, 0.3), 0, 3.5, 0.9, false); cg.userData.noOutline = true; b.add(cg);
+    const cg = mesh(G.sph(0.9, 10, 8), glow(def.core || 0xff7a2a, 0.3), 0, 3.5, 0.9, false); cg.userData.noOutline = true; b.add(cg);
     const head = mesh(new THREE.DodecahedronGeometry(0.6, 0), m, 0, 5.0, 0.1); b.add(head);
     for (const s of [-1, 1]) head.add(mesh(G.box(0.2, 0.1, 0.05), em, s * 0.22, 0.05, 0.52, false));
     const arms = []; for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 1.75, 4.3, 0); p.add(mesh(new THREE.DodecahedronGeometry(0.55, 0), m, 0, -0.5, 0), mesh(new THREE.DodecahedronGeometry(0.5, 0), m, 0, -1.4, 0), mesh(new THREE.DodecahedronGeometry(0.7, 0), m, 0, -2.3, 0)); b.add(p); arms.push(p); }
@@ -324,7 +401,9 @@ function animMob(e, dt, moving, speed) {
     if (p.core) p.core.rotation.y += dt * 2;
   }
   else if (k === 'float') { p.b.position.y = 1.6 + Math.sin(e.anim) * 0.2; p.b.scale.setScalar(1 + wind * 0.3); }
-  else if (k === 'crab') { p.legs.forEach((l, i) => { l.rotation.z = moving ? Math.sin(e.anim * 2 + i) * 0.3 : 0; }); p.arms.forEach((a) => { a.rotation.x = -wind * 1.1; }); }
+  else if (k === 'crab') { p.legs.forEach((l, i) => { l.rotation.z = moving ? Math.sin(e.anim * 2 + i) * 0.3 : 0; }); p.arms.forEach((a) => { a.rotation.x = -wind * 1.1; }); if (p.tail) p.tail.rotation.x = -wind * 0.8 + Math.sin(e.anim) * 0.05; }
+  else if (k === 'flyer') { p.b.position.y = p.base + Math.sin(e.anim * 0.9) * 0.25 - wind * 0.8; p.b.position.z = wind * 0.8; const f = Math.sin(e.anim * (moving ? 4 : 2.5)) * 0.7; p.wings[0].rotation.z = f; p.wings[1].rotation.z = -f; }
+  else if (k === 'snake') { const amp = moving ? 0.35 : 0.12; p.segs.forEach((sg, i) => { sg.position.x = Math.sin(e.anim * 1.4 - i * 0.8) * amp * (i / 3 + 0.3); }); p.head.position.y = 1.25 + wind * 0.4; p.head.rotation.x = -wind * 0.5; }
   else if (k === 'small') { p.legs[0].rotation.x = moving ? s * 0.8 : 0; p.legs[1].rotation.x = moving ? -s * 0.8 : 0; p.b.position.y = Math.abs(Math.sin(e.anim)) * 0.1; }
 }
 

@@ -11,7 +11,7 @@ const enemies = [], npcs = [], pets = [], projs = [], fxs = [], teles = [], time
 const cds = {};
 const P = { x: 0, z: 10, y: 4, vy: 0, face: Math.PI, hp: 100, maxHp: 100, stam: 100, lvl: 1, xp: 0, gold: 0, potions: 3, form: 'caster',
   attackT: -1, attackSpec: null, hitDone: true, dead: false, invuln: 0, lastHurt: -99, lastCombat: -99, walk: 0, onGround: true, dash: null, buffs: {}, swing: 0,
-  power: 10, critPct: 5, haste: 0, armor: 0, speedMul: 1, stats: {} };
+  power: 10, autoAtk: false, swingT: 0, gcd: 0, cast: null, res: { energy: 100, focus: 100, mana: 100, rage: 0 }, manaMax: 100, critPct: 5, haste: 0, armor: 0, speedMul: 1, stats: {} };
 function after(t, fn) { timers.push({ t, fn }); }
 
 /* ---------------- saving ---------------- */
@@ -35,7 +35,8 @@ function newChar(o) {
 }
 function saveChar() {
   if (!CH || mode !== 'play') return;
-  Object.assign(CH, { lvl: P.lvl, xp: P.xp, gold: P.gold, potions: P.potions, x: P.x, z: P.z, form: P.form, dayT, zone: zoneAt(P.x, P.z).id });
+  const gp = DUN.cur ? PLACES[DUN.cur.gate] : null;
+  Object.assign(CH, { lvl: P.lvl, xp: P.xp, gold: P.gold, potions: P.potions, x: gp ? gp.x * 0.98 : P.x, z: gp ? gp.z * 0.98 : P.z, form: P.form, dayT, zone: zoneAt(P.x, P.z).id });
   STORE.last = CH.id; store.set(SAVE_KEY, STORE);
 }
 
@@ -51,11 +52,13 @@ function recalcStats(keepRatio = true) {
   const bearForm = CH.cls === 'druid' && P.form === 'bear';
   P.maxHp = Math.round((60 + st.sta * 10) * (R.hp || 1) * C.hp * (1 + M.hp) * (bearForm ? (M.flags.ursoc ? 1.45 : 1.25) : 1));
   P.hp = keepRatio ? Math.max(1, Math.round(P.maxHp * ratio)) : P.maxHp;
-  P.power = 6 + st[prim] * 1.2 + wd;
+  P.power = 5 + st[prim] * 0.8 + wd * 0.75;
   P.critPct = 5 + st.critR / 8 + (R.crit || 0) * 100 + M.crit + (CH.cls === 'druid' && P.form === 'cat' ? 12 : 0);
   P.haste = st.hasteR / 8 + (R.haste || 0) + M.haste;
   P.armor = Math.round((st.armorG + P.lvl * 6 + (C.armor === 'mail' ? 20 : C.armor === 'leather' ? 10 : 0)) * (1 + M.armor) * (bearForm ? 2.5 : 1));
   P.speedMul = (R.speed || 1) * (1 + M.speed);
+  P.manaMax = CH.cls === 'warlock' || CH.cls === 'druid' ? Math.round(80 + st.int * 6) : 0;
+  if (P.res) P.res.mana = Math.min(P.res.mana, P.manaMax);
 }
 function atk() {
   let a = P.power * (1 + M.dmg);
@@ -147,10 +150,10 @@ let bannerTO; function bannerMsg(t) { const b = $('banner'); b.textContent = t; 
 function fail(msg) { toast(msg); return false; }
 
 /* ---------------- monsters ---------------- */
-const RADIUS = { slime: 0.9, quad: 1.1, spider: 1.3, biped: 0.6, treant: 1.3, wisp: 0.7, wraith: 0.8, crab: 1.2, lurker: 0.9, toad: 1.2, yeti: 1.5, imp: 0.6, golem: 2.2 };
+const RADIUS = { shroom: 0.8, bat: 0.8, bird: 0.9, serpent: 1.0, scorpion: 1.3, slime: 0.9, quad: 1.1, spider: 1.3, biped: 0.6, treant: 1.3, wisp: 0.7, wraith: 0.8, crab: 1.2, lurker: 0.9, toad: 1.2, yeti: 1.5, imp: 0.6, golem: 2.2 };
 function mobStats(def, lvl, elite, boss) {
-  const hp = Math.round((30 + lvl * 24 + lvl * lvl * 0.6) * (def.hp || 1) * (elite ? 3 : 1) * (boss ? 9 : 1));
-  const dmg = (5 + lvl * 3.2) * (def.dmg || 1) * (elite ? 1.5 : 1) * (boss ? 1.7 : 1);
+  const hp = Math.round((34 + lvl * 27 + lvl * lvl * 0.7) * (def.hp || 1) * (elite ? 3 : 1) * (boss ? 9 : 1));
+  const dmg = (6 + lvl * 4) * (def.dmg || 1) * (elite ? 1.5 : 1) * (boss ? 1.7 : 1);
   return { hp, dmg };
 }
 function spawnEnemy(type, x, z, o = {}) {
@@ -163,7 +166,7 @@ function spawnEnemy(type, x, z, o = {}) {
   const scale = named ? named.scale : elite ? 1.35 : 1;
   const mk = buildMobModel(def, scale, elite || boss);
   const st = mobStats(def, lvl, elite, boss), sc = scale * (def.scale || 1);
-  const T = { dmg: st.dmg, speed: def.speed || 4.5, aggro: (def.aggro || 14) + (boss ? 6 : 0), range: (def.range || 2.2) * (def.ranged ? 1 : Math.max(1, sc * 0.85)), ranged: !!def.ranged, proj: def.proj,
+  const T = { dmg: st.dmg, speed: def.speed || 4.5, aggro: (def.aggro || 14) + 2 + (boss ? 6 : 0), range: (def.range || 2.2) * (def.ranged ? 1 : Math.max(1, sc * 0.85)), ranged: !!def.ranged, proj: def.proj,
     cd: def.cd || (boss ? 2 : 1.4), windup: def.windup || (boss ? 0.7 : def.ranged ? 0.5 : 0.35), radius: (RADIUS[def.model] || 1) * sc, leash: boss ? 40 : 46 };
   const e = { type: named ? o.named : type, base: named ? named.base : type, named: o.named || null, def, name: def.name, lvl, elite, boss, T, maxHp: st.hp, hp: st.hp, x, z, y: groundAt(x, z),
     home: { x, z }, state: 'idle', cd: 0, windup: 0, face: rand(0, 6.28), wanderT: rand(0, 4), wx: null, wz: null, anim: rand(0, 6), atkAnim: -1, kbx: 0, kbz: 0, flashT: 0,
@@ -182,7 +185,7 @@ function spawnAll() {
       spawnEnemy(type, x, z, { elite: Math.random() < 0.07 });
     }
   }
-  for (const id in NAMED) { const n = NAMED[id], p = PLACES[n.place]; spawnEnemy(n.base, p.x + 2, p.z + 2, { named: id }); }
+  for (const id in NAMED) { const n = NAMED[id]; if (n.dungeon) continue; const p = PLACES[n.place]; spawnEnemy(n.base, p.x + 2, p.z + 2, { named: id }); }
 }
 function respawnEnemy(e) {
   e.dead = false; e.hp = e.maxHp; e.x = e.home.x; e.z = e.home.z; e.state = 'idle'; e.g.visible = true; e.g.scale.setScalar(e.sc); e.windup = 0; e.slam = false; e.dots = []; e.stunT = 0; e.fearT = 0; e.weakT = 0;
@@ -234,7 +237,7 @@ function killEnemy(e) {
 function dropLoot(e) {
   const g = Math.round(rand(1, 3) * e.lvl * (e.elite ? 3 : 1) * (e.boss ? 8 : 1)); P.gold += g;
   setTimeout(() => floatText(`+${g} g`, e.x, e.y + 1, e.z, 'gold'), 180);
-  const zone = zoneAt(e.x, e.z).id;
+  const zone = e.dungeon && DUN.cur ? DUN.cur.zone : zoneAt(e.x, e.z).id;
   const items = [];
   if (e.boss) { items.push(genItem(e.lvl + 1, rollRarity('boss'), pick(GEAR_SLOTS), CH.cls, zone)); items.push(genItem(e.lvl + 1, rollRarity('elite'), pick(GEAR_SLOTS), CH.cls, zone)); P.potions += 2; }
   else if (e.elite) { items.push(genItem(e.lvl + 1, rollRarity('elite'), pick(GEAR_SLOTS), CH.cls, zone)); if (Math.random() < 0.5) P.potions++; }
@@ -271,16 +274,17 @@ function hurtPlayer(dmg, lvl = 1) {
   let dr = armorDR(lvl) + (RACES[CH.race].dr || 0) + (CH.cls === 'druid' && P.form === 'bear' ? 0.45 : 0) + (M.flags.moonkin && P.form === 'caster' ? 0.1 : 0);
   if (M.flags.survivalist && P.hp < P.maxHp * 0.35) dr += 0.3;
   dmg = Math.max(1, Math.round(dmg * rand(0.9, 1.1) * (1 - clamp(dr, 0, 0.8))));
-  P.hp -= dmg; P.lastHurt = clock; P.lastCombat = clock; P.invuln = 0.2; shake = Math.max(shake, 0.2); breakStealth();
+  P.hp -= dmg; P.lastHurt = clock; P.lastCombat = clock; P.invuln = 0.2; gainRage((dmg / P.maxHp) * 90); shake = Math.max(shake, 0.2); breakStealth();
   floatText('-' + dmg, P.x, P.y + 2.8, P.z, 'hurt'); $('hurt').style.opacity = 1; setTimeout(() => ($('hurt').style.opacity = 0), 140);
   if (P.hp <= 0) { P.hp = 0; die(); }
 }
 function die() {
-  P.dead = true; closeAllWindows(); breakStealth(); dismissPets(); target = null;
+  P.dead = true; P.autoAtk = false; P.cast = null; closeAllWindows(); breakStealth(); dismissPets(); target = null;
   for (const e of enemies) if (e.state === 'chase') e.state = 'return';
   setTimeout(() => { $('dead').hidden = false; $('btnRespawn').focus(); }, 1000);
 }
 function respawnPlayer() {
+  if (DUN.cur) { leaveDungeon(); P.dead = false; P.hp = Math.round(P.maxHp * 0.6); $('dead').hidden = true; saveChar(); canvas.focus(); return; }
   const t = TOWNS.filter((t) => CH.towns[t.id]).sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z))[0] || TOWNS[0];
   P.dead = false; P.x = t.x; P.z = t.z + 10; P.y = groundAt(P.x, P.z); P.vy = 0; P.hp = Math.round(P.maxHp * 0.6); $('dead').hidden = true; saveChar(); canvas.focus();
 }
@@ -335,45 +339,98 @@ function faceTo(e) { if (e) P.face = Math.atan2(e.x - P.x, e.z - P.z); }
 function playAnim(kind, dur) { P.attackT = 0; P.attackSpec = { kind: 'none', anim: kind, dur }; P.hitDone = true; }
 
 /* ---------------- basic attacks & skills ---------------- */
-function basicSpec() {
-  const c = CH.cls;
-  if (c === 'rogue') return { kind: 'melee', anim: 'dagger', dur: 0.32, mult: 0.75, range: 2.6, arc: 0.2, kb: 3 };
-  if (c === 'archer') return { kind: 'proj', anim: 'bow', dur: 0.55, mult: 0.95, proj: 'arrow', speed: 44, range: 34 };
-  if (c === 'warlock') return { kind: 'proj', anim: 'cast', dur: 0.6, mult: 1, proj: 'orb', color: 0x9a4dff, speed: 24, range: 28 };
-  if (P.form === 'cat') return { kind: 'melee', anim: 'beast', dur: 0.3, mult: 0.85, range: 2.8, arc: 0.2, kb: 3 };
-  if (P.form === 'bear') return { kind: 'melee', anim: 'beast', dur: 0.55, mult: 0.95, range: 3.6, arc: -0.15, kb: 8 };
-  return { kind: 'proj', anim: 'cast', dur: 0.6, mult: 1, proj: 'orb', color: 0x9fe05a, speed: 26, range: 28 };
+/* ---------------- resources (WoW style) ---------------- */
+const RES = { energy: { name: 'Energy', color: '#ffe066' }, focus: { name: 'Focus', color: '#ff9a4a' }, mana: { name: 'Mana', color: '#4aa8ff' }, rage: { name: 'Rage', color: '#ff4a5a' } };
+function resType() { if (CH.cls === 'rogue') return 'energy'; if (CH.cls === 'archer') return 'focus'; if (CH.cls === 'warlock') return 'mana'; return P.form === 'cat' ? 'energy' : P.form === 'bear' ? 'rage' : 'mana'; }
+const resMax = (t) => (t === 'mana' ? P.manaMax : 100);
+function skillCost(sk) { if (!sk.cost) return 0; return resType() === 'mana' ? Math.round((sk.cost / 100) * P.manaMax) : sk.cost; }
+function updateRes(dt) {
+  const hm = hasteMul(), inC = clock - P.lastCombat < 5;
+  P.res.energy = Math.min(100, P.res.energy + 11 * hm * dt); P.res.focus = Math.min(100, P.res.focus + 8 * hm * dt);
+  P.res.mana = Math.min(P.manaMax, P.res.mana + P.manaMax * (inC ? 0.012 : 0.05) * dt);
+  if (!inC) P.res.rage = Math.max(0, P.res.rage - 3 * dt);
 }
+function gainRage(n) { if (CH.cls === 'druid' && P.form === 'bear') P.res.rage = Math.min(100, P.res.rage + n); }
+let _errT = 0;
+function errMsg(m) { if (clock - _errT < 0.8) return false; _errT = clock; floatText(m, P.x, P.y + 3.1, P.z, 'hurt'); return false; }
+
+/* ---------------- auto-attack, casting, global cooldown ---------------- */
+function swingSpec() {
+  const c = CH.cls;
+  if (c === 'rogue') return { kind: 'melee', anim: 'dagger', speed: 1.4, mult: 1.0, range: 2.6, arc: 0.2, kb: 2 };
+  if (c === 'archer') return { kind: 'proj', anim: 'bow', speed: 2.2, mult: 1.35, pspeed: 44, range: 34 };
+  if (c === 'druid' && P.form === 'cat') return { kind: 'melee', anim: 'beast', speed: 1.0, mult: 0.75, range: 2.8, arc: 0.2, kb: 2 };
+  if (c === 'druid' && P.form === 'bear') return { kind: 'melee', anim: 'beast', speed: 2.2, mult: 1.35, range: 3.6, arc: -0.15, kb: 6, cleave: true };
+  return null;
+}
+function basicSkill() { if (CH.cls === 'warlock') return SK.shadowbolt; if (CH.cls === 'druid' && P.form === 'caster') return SK.wrath; return null; }
+const gcdTime = () => Math.max(0.75, 1 / hasteMul());
 function startAttack() {
-  if (P.dead || P.attackT >= 0 || mode !== 'play' || anyModal()) return;
-  const s = basicSpec(); s.dur /= hasteMul();
-  const t = s.kind === 'melee' ? meleeTarget(4.5) : findTarget(s.range); if (t) faceTo(t);
-  P.attackT = 0; P.attackSpec = s; P.hitDone = false; if (s.anim === 'dagger') P.swing ^= 1;
+  if (P.dead || mode !== 'play' || anyModal()) return;
+  const bs = basicSkill(); if (bs) { useSkill(bs); return; }
+  const s = swingSpec(), t = target && !target.dead && dist(target) < 45 ? target : s.kind === 'melee' ? meleeTarget(5) : findTarget(s.range);
+  if (!t) { if (P.attackT < 0) playAnim(s.anim, 0.3); return; }
+  setTarget(t); faceTo(t); P.autoAtk = true;
+}
+function updateAuto(dt) {
+  if (P.swingT > 0) P.swingT -= dt * hasteMul();
+  if (!P.autoAtk) return;
+  const s = swingSpec(); if (!s || !target || target.dead) { P.autoAtk = false; return; }
+  if (P.cast || P.swingT > 0) return;
+  const d = dist(target) - target.T.radius; if (s.kind === 'melee' ? d > s.range + 0.6 : d > s.range) return;
+  faceTo(target); P.swingT = s.speed; P.lastCombat = clock;
+  if (s.anim === 'dagger') P.swing ^= 1; playAnim(s.anim, Math.min(0.4, s.speed * 0.5));
+  if (s.kind === 'melee') doMelee(s); else { const from = handPos(); fire({ kind: 'arrow', pos: from, dir: aimAt(target, from), speed: s.pspeed, dmg: atk() * s.mult }); }
   if (M.flags.adrenaline) for (const k in cds) if (cds[k] > 0) cds[k] = Math.max(0, cds[k] - 0.5);
 }
 function doMelee(s) {
-  const f = facing(); let any = false; const cleave = P.buffs.flurry || CH.cls === 'druid';
-  const t = target && !target.dead && dist(target) < s.range + target.T.radius + 0.5 ? target : null;
-  for (const e of enemies) {
-    if (e.dead || !e.g.visible) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz);
-    if (!(d < s.range + e.T.radius && (d < 1.3 || (dx * f.x + dz * f.z) / d > s.arc))) continue;
-    if (!cleave && t && e !== t) continue;
-    dealDamage(e, atk() * s.mult, { kb: s.kb }); any = true; if (!cleave && !t) break;
+  const f = facing(); let any = false; const cleave = s.cleave || P.buffs.flurry;
+  const t = target && !target.dead && dist(target) < s.range + target.T.radius + 0.6 ? target : null;
+  if (t) { dealDamage(t, atk() * s.mult, { kb: s.kb }); any = true; }
+  if (cleave) for (const e of enemies) {
+    if (e === t || e.dead || !e.g.visible) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz);
+    if (d < s.range + e.T.radius && (d < 1.3 || (dx * f.x + dz * f.z) / d > s.arc)) { dealDamage(e, atk() * s.mult * 0.7, { kb: s.kb }); any = true; }
   }
-  if (any) shake = Math.max(shake, 0.08);
+  if (any) { shake = Math.max(shake, 0.08); gainRage(9); }
 }
-function doBasicRanged(s) { const from = handPos(), t = findTarget(s.range); faceTo(t); fire({ kind: s.proj, pos: from, dir: aimAt(t, from), speed: s.speed, dmg: atk() * s.mult, color: s.color, size: 0.2 }); }
 function skillCd(sk) { return Math.max(0.5, sk.cd - (M.cdr[sk.id] || 0)); }
-function useSlot(i) {
+function useSlot(i) { const sk = barSkills()[i]; if (sk) useSkill(sk); }
+function useSkill(sk) {
   if (mode !== 'play' || P.dead || anyModal()) return;
-  const sk = barSkills()[i]; if (!sk) return;
   if (P.lvl < sk.lvl) return fail(`${sk.name} unlocks at level ${sk.lvl}.`);
+  if (P.cast) return;
   const id = sk.cdId || sk.id;
-  if ((cds[id] || 0) > 0) return;
   if (sk.id === 'shadowstep' && P.buffs.dance) cds.shadowstep = 0;
+  if ((cds[id] || 0) > 0) return errMsg('Not ready yet');
+  if (!sk.offGcd && P.gcd > 0) return;
+  const rt = resType(); if (skillCost(sk) > P.res[rt]) return errMsg(`Not enough ${RES[rt].name.toLowerCase()}`);
+  if (sk.cast) {
+    if (sk.range && !findTarget(sk.range)) return errMsg('No target in range');
+    P.cast = { sk, t: 0, dur: sk.cast / hasteMul() }; P.gcd = gcdTime(); breakStealth(); return;
+  }
   const r = sk.use(); if (r === false) return;
+  finishSkill(sk);
+}
+function finishSkill(sk) {
+  const id = sk.cdId || sk.id, rt = resType();
+  P.res[rt] = Math.max(0, P.res[rt] - skillCost(sk));
   cds[id] = P.buffs.dance && sk.id === 'shadowstep' ? 0.5 : skillCd(sk);
+  if (!sk.offGcd) P.gcd = Math.max(P.gcd, gcdTime());
   if (sk.id !== 'vanish') breakStealth();
+  if (!sk.form && target && !target.dead && swingSpec()) P.autoAtk = true;
+  P.lastCombat = target && !target.dead ? clock : P.lastCombat;
+}
+function updateCast(dt, moving) {
+  if (P.gcd > 0) P.gcd -= dt;
+  if (!P.cast) return;
+  if (moving || P.vy > 1) { floatText('Interrupted', P.x, P.y + 3.1, P.z, 'hurt'); P.cast = null; P.gcd = 0; return; }
+  P.cast.t += dt;
+  if (Math.floor(P.cast.t * 4) !== Math.floor((P.cast.t - dt) * 4) && hero && P.form === 'caster') playAnim('cast', 0.25);
+  if (P.cast.t >= P.cast.dur) {
+    const sk = P.cast.sk; P.cast = null;
+    if (skillCost(sk) > P.res[resType()]) return errMsg('Not enough mana');
+    const r = sk.use(); if (r !== false) finishSkill(sk);
+  }
 }
 function setForm(f) {
   if (P.form === f) return false;
@@ -387,7 +444,8 @@ function applyForm() {
 }
 function rebuildHero() {
   if (hero) scene.remove(hero.g); hero = buildHero(CH, CH.equip); scene.add(hero.g);
-  if (CH.cls === 'druid') { if (!cat) cat = buildBeast('cat'); if (!bear) bear = buildBeast('bear'); }
+  if (cat) { scene.remove(cat.g); cat = null; } if (bear) { scene.remove(bear.g); bear = null; }
+  if (CH.cls === 'druid') { const ac = HAIRS[CH.hair ?? 1]; cat = buildBeast('cat', CH.race, ac); bear = buildBeast('bear', CH.race, ac); }
   else { if (cat) { scene.remove(cat.g); cat = null; } if (bear) { scene.remove(bear.g); bear = null; } }
   hero.g.position.set(P.x, P.y, P.z); hero.g.rotation.y = P.face; applyForm();
   if (P.buffs.stealth) setGhostAll(true);
@@ -480,8 +538,8 @@ function updateEnemy(e, dt) {
     }
   }
   let moving = false;
-  if (speed > 0) { const nx = e.x + tx * speed * dt, nz = e.z + tz * speed * dt; if (groundAt(nx, nz) > -0.6 || e.state === 'chase') { e.x = nx; e.z = nz; moving = true; } else e.wx = null; }
-  if (e.kbx || e.kbz) { e.x += e.kbx * dt; e.z += e.kbz * dt; const f = Math.pow(0.002, dt); e.kbx *= f; e.kbz *= f; if (Math.abs(e.kbx) + Math.abs(e.kbz) < 0.1) e.kbx = e.kbz = 0; }
+  if (speed > 0) { const nx = e.x + tx * speed * dt, nz = e.z + tz * speed * dt; if ((groundAt(nx, nz) > -0.6 || e.state === 'chase') && walkable(nx, nz)) { e.x = nx; e.z = nz; moving = true; } else e.wx = null; }
+  if (e.kbx || e.kbz) { if (walkable(e.x + e.kbx * dt, e.z + e.kbz * dt)) { e.x += e.kbx * dt; e.z += e.kbz * dt; } const f = Math.pow(0.002, dt); e.kbx *= f; e.kbz *= f; if (Math.abs(e.kbx) + Math.abs(e.kbz) < 0.1) e.kbx = e.kbz = 0; }
   if (d < T.radius + 0.5 && d > 0.01) { e.x -= (dxp / d) * (T.radius + 0.5 - d); e.z -= (dzp / d) * (T.radius + 0.5 - d); }
   if (e.T.radius < 1.6) collide(e, T.radius * 0.6);
   e.y = groundAt(e.x, e.z); if (e.y < -0.6) e.y = -0.6;
@@ -559,6 +617,12 @@ function npcMarker(n) {
   return best;
 }
 function nearestInteract() {
+  if (DUN.cur) {
+    if (DUN.chest && !DUN.chestOpen && Math.hypot(P.x - DUN.chest.position.x, P.z - DUN.chest.position.z) < 3.2) return { kind: 'chest' };
+    for (const ex of [DUN.exit, DUN.exit2]) if (ex && Math.hypot(P.x - ex.position.x, P.z - ex.position.z) < 3.5) return { kind: 'exit' };
+    return null;
+  }
+  for (const g of gates) if (Math.hypot(P.x - g.x, P.z - g.z) < 4.5) return { kind: 'gate', d: g.d };
   for (const n of npcs) if (Math.hypot(P.x - n.x, P.z - n.z) < 4.2) return { kind: 'npc', n };
   for (const nd of nodes) if (nd.on && Math.hypot(P.x - nd.x, P.z - nd.z) < 2.6) return { kind: 'node', nd };
   return null;
@@ -571,6 +635,7 @@ function gatherNode(nd) {
   else { heal(P.maxHp * 0.15); gainXP(5); }
 }
 function discoverTowns() {
+  if (DUN.cur) return;
   for (const t of TOWNS) if (!CH.towns[t.id] && Math.hypot(P.x - t.x, P.z - t.z) < 45) {
     CH.towns[t.id] = true; const xp = 30 * ZONE[t.zone].lv[0]; gainXP(xp); toast(`Discovered: ${t.name}. +${xp} xp`); saveChar();
   }

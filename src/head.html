@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Emberfall Vale</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,7 +37,10 @@ button{font-family:var(--body);color:inherit}
 .bar i{display:block;height:100%;width:100%;border-radius:6px;transition:width .15s linear}
 .bar span{position:absolute;inset:0;display:grid;place-items:center;font-size:9.5px;font-weight:800;text-shadow:0 1px 2px #000;font-variant-numeric:tabular-nums}
 .bar.hp i{background:linear-gradient(90deg,var(--hp2),var(--hp))}
-.bar.st{height:5px}.bar.st i{background:var(--stam)}
+.bar.st{height:4px}.bar.st i{background:var(--stam)}
+.bar.rs{height:10px}
+#pframe.combat .portrait{border-color:var(--hp);box-shadow:0 0 0 2px rgba(0,0,0,.5),0 0 12px rgba(255,90,106,.7)}
+.slot.nores .ic{filter:saturate(.25) brightness(.55) sepia(.3) hue-rotate(180deg)}
 #buffs{top:calc(72px + env(safe-area-inset-top,0px));left:calc(12px + env(safe-area-inset-left,0px));display:flex;gap:4px;flex-wrap:wrap;max-width:260px}
 .buff{width:30px;height:30px;border-radius:8px;border:1px solid var(--line2);display:grid;place-items:center;font-size:10px;font-weight:800;position:relative;text-shadow:0 1px 2px #000;background:var(--panel)}
 .buff b{position:absolute;bottom:-1px;right:2px;font-size:9px}
@@ -138,6 +142,11 @@ button{font-family:var(--body);color:inherit}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:3px 18px;margin-top:12px;font-size:13px}
 .stats div{display:flex;justify-content:space-between;border-bottom:1px dashed rgba(255,255,255,.08);padding:2px 0}
 .stats b{font-variant-numeric:tabular-nums;color:var(--gold)}
+.stats .srow{display:flex;justify-content:space-between;border:0;border-bottom:1px dashed rgba(255,255,255,.08);background:none;padding:3px 0;font-size:13px;cursor:help;text-align:left;color:var(--text)}
+.stats .srow:hover,.stats .srow:focus-visible{color:var(--gold);outline:none}
+.sdesc{grid-column:1/-1;margin:8px 0 0;font-size:12.5px;line-height:1.45;color:var(--muted);min-height:3em}
+.sdesc b{color:var(--text)}
+@media (max-width:1180px){body:not(.touch) #micro{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
 
 #winBags{right:calc(12px + env(safe-area-inset-right,0px));bottom:110px;width:min(420px,calc(100vw - 24px))}
 .bagrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px}
@@ -314,6 +323,7 @@ body:not([data-mode="play"]) #hud,body:not([data-mode="play"]) #touch,body:not([
     <div class="fbody">
       <div class="fname"><span id="pName"></span><span class="flvl" id="pLvl"></span></div>
       <div class="bar hp"><i id="pHp"></i><span id="pHpTxt"></span></div>
+      <div class="bar rs"><i id="pRes"></i><span id="pResTxt"></span></div>
       <div class="bar st"><i id="pSt"></i></div>
     </div>
   </div>
@@ -429,7 +439,7 @@ body:not([data-mode="play"]) #hud,body:not([data-mode="play"]) #touch,body:not([
   <div class="sec"><span class="lab">Skin</span><div class="sws" id="skinOpts"></div></div>
   <div class="sec"><span class="lab">Eyes</span><div class="sws" id="eyeOpts"></div></div>
   <div class="sec"><span class="lab" id="hairLab">Hair</span><div class="sws" id="hairOpts"></div><div class="seg" id="styleOpts"></div></div>
-  <div class="sec"><span class="lab">Class</span><div class="opts2" id="classOpts"></div></div>
+  <div class="sec"><span class="lab">Class</span><div class="opts2" id="classOpts"></div><div class="seg" id="formPrev"></div></div>
   <div class="info" id="charInfo"></div>
   <div class="btnrow"><button class="btn" id="btnMake">Create character</button><button class="btn ghost" id="btnBack">Back</button></div>
 </div>

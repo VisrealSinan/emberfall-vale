@@ -9,7 +9,7 @@ function previewChar(c) {
   rebuildHero(); hero.g.rotation.y = 0;
 }
 function toSelect() {
-  saveChar(); setMode('select'); dismissPets(); target = null;
+  saveChar(); if (DUN.cur) leaveDungeon(); setMode('select'); dismissPets(); target = null;
   $('select').hidden = false; $('creator').hidden = true; $('dead').hidden = true; $('delBox').innerHTML = '';
   if (!STORE.chars.length) { openCreator(); return; }
   if (!STORE.chars.find((c) => c.id === selId)) selId = STORE.last && STORE.chars.find((c) => c.id === STORE.last) ? STORE.last : STORE.chars[0].id;
@@ -36,11 +36,11 @@ function enterWorld(c) {
   CH = c; STORE.last = c.id;
   if (!CH.quests) CH.quests = { active: {}, done: {} };
   if (!CH.talents) CH.talents = {}; if (!CH.towns) CH.towns = { emberfall: true }; if (!CH.inv) CH.inv = new Array(32).fill(null); if (!CH.equip) CH.equip = starterGear(CH.cls);
-  Object.assign(P, { lvl: c.lvl, xp: c.xp, gold: c.gold, potions: c.potions, form: CH.cls === 'druid' ? c.form || 'caster' : 'caster', dead: false, buffs: {}, attackT: -1, dash: null, vy: 0, invuln: 0, stam: 100 });
+  Object.assign(P, { lvl: c.lvl, xp: c.xp, gold: c.gold, potions: c.potions, form: CH.cls === 'druid' ? c.form || 'caster' : 'caster', dead: false, buffs: {}, attackT: -1, dash: null, vy: 0, invuln: 0, stam: 100, autoAtk: false, swingT: 0, gcd: 0, cast: null });
   P.x = c.x ?? 0; P.z = c.z ?? 12; if (Math.hypot(P.x, P.z) > 560 || groundAt(P.x, P.z) < -2) { P.x = 0; P.z = 12; }
   P.y = groundAt(P.x, P.z); P.face = Math.PI; dayT = c.dayT ?? 0.1;
   for (const k in cds) delete cds[k];
-  recalcStats(false); P.hp = P.maxHp; rebuildHero(); dismissPets(); target = null;
+  recalcStats(false); P.hp = P.maxHp; P.res = { energy: 100, focus: 100, mana: P.manaMax, rage: 0 }; rebuildHero(); dismissPets(); target = null;
   $('select').hidden = true; $('creator').hidden = true; setMode('play');
   camYaw = 0; camPitch = 0.36; camLook.set(P.x, P.y + 1.7, P.z); lastZone = null;
   buildBar(); renderTracker(); canvas.focus(); cullChunks(P.x, P.z);
@@ -50,7 +50,7 @@ function enterWorld(c) {
 }
 
 /* ---------------- creator ---------------- */
-let draft = null, suggested = '';
+let draft = null, suggested = '', prevForm = 'caster';
 function openCreator() {
   setMode('create'); $('select').hidden = true; $('creator').hidden = false; $('nameErr').hidden = true;
   draft = { name: '', race: 'elf', sex: 'female', cls: 'rogue', skin: 0, hair: 4, style: 2, eye: 1 };
@@ -71,8 +71,11 @@ function renderCreator() {
   $('charName').placeholder = suggested;
   const list = classSkills(draft.cls).filter((s) => s.lvl <= 6 && (!s.inForm || s.lvl <= 2)).slice(0, 6);
   $('charInfo').innerHTML = `<div class="trait">${RACES[draft.race].trait}</div><div><b>${CLASSES[draft.cls].name}.</b> ${CLASSES[draft.cls].blurb} Wears ${CLASSES[draft.cls].armor}. Learns 8 skills by level 18 and talents from level 10.</div><ul>${list.map((a) => `<li><b>${a.name}.</b> ${a.desc}</li>`).join('')}</ul>`;
+  if (draft.cls !== 'druid') prevForm = 'caster';
+  $('formPrev').hidden = draft.cls !== 'druid';
+  seg($('formPrev'), [['caster', 'Preview: Caster'], ['cat', 'Cat form'], ['bear', 'Bear form']], prevForm, (k) => { prevForm = k; renderCreator(); });
   const c = Object.assign({}, draft, { name: draft.name || suggested, equip: starterGear(draft.cls) });
-  CH = c; P.form = 'caster'; P.x = PREVIEW_SPOT.x; P.z = PREVIEW_SPOT.z; P.y = groundAt(P.x, P.z); P.buffs = {}; rebuildHero();
+  CH = c; P.form = prevForm; P.x = PREVIEW_SPOT.x; P.z = PREVIEW_SPOT.z; P.y = groundAt(P.x, P.z); P.buffs = {}; rebuildHero();
 }
 $('btnBack').onclick = () => { if (STORE.chars.length) toSelect(); };
 $('btnMake').onclick = () => {
