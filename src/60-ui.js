@@ -474,7 +474,9 @@ function renderSettings() {
   document.querySelectorAll('#setGfx button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === GFX)));
   document.querySelectorAll('#setPlates button').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.v === 'on') === showPlates)));
   $('setSens').value = SENS;
+  document.querySelectorAll('#setStyle button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === STYLE_ID)));
 }
+$('setStyle').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.dataset.v === STYLE_ID) return; store.set('ev-style', b.dataset.v); saveChar(); location.reload(); });
 $('setGfx').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; GFX = b.dataset.v; store.set('ev-gfx', GFX); applyGfx(); renderSettings(); });
 $('setPlates').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; showPlates = b.dataset.v === 'on'; store.set('ev-plates', showPlates); renderSettings(); });
 $('setSens').addEventListener('input', (e) => { SENS = +e.target.value; store.set('ev-sens', SENS); });

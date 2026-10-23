@@ -8,7 +8,7 @@ const terrain = (() => {
     pos.setY(i, h); groundColor(x, z, h, c); cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(cols, 3)); geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, toon(0xffffff, { vertexColors: true })); m.receiveShadow = true; scene.add(m); return m;
+  const m = new THREE.Mesh(geo, toon(ST.tint, { vertexColors: true })); m.receiveShadow = true; scene.add(m); return m;
 })();
 const water = new THREE.Mesh(new THREE.PlaneGeometry(SIZE * 2, SIZE * 2).rotateX(-Math.PI / 2), toon(0x4cb6ea, { transparent: true, opacity: 0.8 }));
 water.position.y = 0; scene.add(water);
@@ -34,15 +34,15 @@ const grassGeo = mergeGeos([G.cone(0.07, 0.7, 3).translate(0, 0.35, 0), G.cone(0
 const flowerGeo = mergeGeos([G.sph(0.16, 6, 4).translate(0, 0.45, 0), G.cyl(0.02, 0.02, 0.45, 3).translate(0, 0.22, 0)]);
 
 const INST = {
-  trunk: { geo: trunkGeo, mat: toon(0xffffff), shadow: true },
-  trunkDark: { geo: trunkGeo, mat: toon(0xffffff), shadow: true },
-  round: { geo: roundGeo, mat: toon(0xffffff), shadow: true, outline: 0.09 },
-  pine: { geo: pineGeo, mat: toon(0xffffff), shadow: true, outline: 0.09 },
-  willow: { geo: willowGeo, mat: toon(0xffffff), shadow: true, outline: 0.09 },
-  dead: { geo: deadGeo, mat: toon(0xffffff), shadow: true },
-  rock: { geo: rockGeo, mat: toon(0xffffff), shadow: true, outline: 0.07 },
-  grass: { geo: grassGeo, mat: toon(0xffffff), shadow: false, near: true },
-  flower: { geo: flowerGeo, mat: toon(0xffffff), shadow: false, near: true },
+  trunk: { geo: trunkGeo, mat: toon(ST.tint), shadow: true },
+  trunkDark: { geo: trunkGeo, mat: toon(ST.tint), shadow: true },
+  round: { geo: roundGeo, mat: toon(ST.tint), shadow: true, outline: 0.09 },
+  pine: { geo: pineGeo, mat: toon(ST.tint), shadow: true, outline: 0.09 },
+  willow: { geo: willowGeo, mat: toon(ST.tint), shadow: true, outline: 0.09 },
+  dead: { geo: deadGeo, mat: toon(ST.tint), shadow: true },
+  rock: { geo: rockGeo, mat: toon(ST.tint), shadow: true, outline: 0.07 },
+  grass: { geo: grassGeo, mat: toon(ST.tint), shadow: false, near: true },
+  flower: { geo: flowerGeo, mat: toon(ST.tint), shadow: false, near: true },
 };
 const TREE_PLAN = {
   vale: { n: 750, dens: 0.5, kinds: [['round', 0.55, () => tmpC.setHSL(rand(0.24, 0.31), rand(0.55, 0.7), rand(0.42, 0.5))], ['sakura', 0.45, () => tmpC.setHSL(rand(0.92, 0.97), rand(0.7, 0.85), rand(0.78, 0.86))]] },

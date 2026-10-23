@@ -1,6 +1,12 @@
 {
-  "gameVersion": "2.0.0",
+  "gameVersion": "2.1.0",
   "news": [
+    {
+      "date": "2026-10-23",
+      "tag": "Patch 2.1",
+      "title": "Pick your art style",
+      "body": "Five art styles to choose from in Esc, Settings, Art style: Bright Anime, Painted Meadow, Crisp Cel, Twilight Festival and Moonlit Night. The game saves and reloads in the new look."
+    },
     {
       "date": "2026-10-23",
       "tag": "Patch 2.0",

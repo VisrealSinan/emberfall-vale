@@ -87,19 +87,21 @@ if (matchMedia('(pointer:coarse)').matches) document.body.classList.add('touch')
 $('btnRespawn').onclick = respawnPlayer;
 
 /* ---------------- day / night ---------------- */
-const DAY_LEN = 600, sky = { day: [0x3a9cff, 0xb8dcff], dusk: [0x5a5aa8, 0xffb08a], night: [0x0a1030, 0x28305a] };
+const DAY_LEN = 600, sky = { day: ST.day, dusk: ST.dusk, night: ST.night };
+let LOCK_T = ST.lockT;
+try { const q = new URLSearchParams(location.search).get('t'); if (q) LOCK_T = +q; } catch (e) {}
 const cA = new THREE.Color(), cB = new THREE.Color(), sunDir = new THREE.Vector3();
 function updateSky(dt) {
-  dayT = (dayT + dt / DAY_LEN) % 1;
+  dayT = LOCK_T !== undefined ? LOCK_T : (dayT + dt / DAY_LEN) % 1;
   const a = dayT < 0.65 ? (dayT / 0.65) * Math.PI : Math.PI + ((dayT - 0.65) / 0.35) * Math.PI, sh = Math.sin(a);
   sunDir.set(Math.cos(a), sh, 0.35).normalize();
   const df = smooth(-0.15, 0.3, sh), dusk = Math.max(0, 1 - Math.abs(sh) / 0.3) * 0.8;
   cA.set(sky.night[0]).lerp(tmpC.set(sky.day[0]), df).lerp(tmpC.set(sky.dusk[0]), dusk * 0.5); cB.set(sky.night[1]).lerp(tmpC.set(sky.day[1]), df).lerp(tmpC.set(sky.dusk[1]), dusk * 0.8);
   skyU.top.value.copy(cA); skyU.hor.value.copy(cB); skyU.bot.value.copy(cB).multiplyScalar(0.8); skyU.sunDir.value.copy(sunDir); skyU.sunCol.value.setHex(sh > 0 ? 0xfff2c8 : 0x9ab0ff);
-  scene.fog.color.copy(cB); scene.fog.near = 70 + df * 90; scene.fog.far = (GFX === 'low' ? 240 : 320) + df * 120;
-  hemi.intensity = 0.3 + 0.32 * df; hemi.color.setHSL(0.58, 0.6, 0.6 + 0.3 * df);
-  if (sh < 0) { sun.position.copy(sunDir).multiplyScalar(-1); sun.position.y = Math.abs(sun.position.y) + 0.4; sun.intensity = 0.3; sun.color.setHex(0x9ab0ff); }
-  else { sun.position.copy(sunDir); sun.intensity = 0.2 + 0.6 * df; sun.color.set(0xfff4e0).lerp(tmpC.set(0xffa070), dusk * 0.6); }
+  scene.fog.color.copy(cB); scene.fog.near = (70 + df * 90) * ST.fog; scene.fog.far = ((GFX === 'low' ? 240 : 320) + df * 120) * Math.min(1.15, ST.fog);
+  hemi.intensity = (0.3 + 0.32 * df) * ST.hemi; hemi.color.setHSL(0.58, 0.6, 0.6 + 0.3 * df);
+  if (sh < 0) { sun.position.copy(sunDir).multiplyScalar(-1); sun.position.y = Math.abs(sun.position.y) + 0.4; sun.intensity = 0.3 * ST.hemi; sun.color.setHex(0x9ab0ff); }
+  else { sun.position.copy(sunDir); sun.intensity = (0.2 + 0.6 * df) * ST.sun; sun.color.set(ST.sunCol).lerp(tmpC.set(0xffa070), dusk * 0.6); }
   sun.position.normalize().multiplyScalar(110).add(_v3.set(P.x, P.y, P.z)); sun.target.position.set(P.x, P.y, P.z);
   stars.material.opacity = 1 - smooth(-0.2, 0.1, sh);
   const cc = 0.35 + 0.65 * df; for (const c of clouds) { const u = c.userData; u.a += u.sp * dt; c.position.set(camera.position.x + Math.cos(u.a) * u.r, u.y, camera.position.z + Math.sin(u.a) * u.r); c.material.color.setRGB(cc, cc, cc + 0.05 * (1 - df)).lerp(tmpC.set(0xffb08a), dusk * 0.4); }

@@ -388,6 +388,7 @@ body:not([data-mode="play"]) #hud,body:not([data-mode="play"]) #touch,body:not([
 </section>
 <section id="winSet" class="win" hidden><header><h3>Settings</h3><button class="x" data-close aria-label="Close">×</button></header>
   <div class="wbody">
+    <div class="field"><span class="lab">Art style</span><div class="seg" id="setStyle"><button data-v="bright">Bright Anime</button><button data-v="painted">Painted Meadow</button><button data-v="crisp">Crisp Cel</button><button data-v="twilight">Twilight Festival</button><button data-v="moonlit">Moonlit Night</button></div><small style="color:var(--muted)">Changing the art style saves your game and reloads it.</small></div>
     <div class="field"><span class="lab">Graphics</span><div class="seg" id="setGfx"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div></div>
     <div class="field"><span class="lab">Camera sensitivity</span><input type="range" id="setSens" min="0.4" max="2" step="0.1"></div>
     <div class="field"><span class="lab">Nameplates</span><div class="seg" id="setPlates"><button data-v="on">Show</button><button data-v="off">Hide</button></div></div>
@@ -604,15 +605,28 @@ Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, n
 sun.shadow.bias = -0.0006;
 scene.add(sun); scene.add(sun.target);
 
+/* ---------------- art styles ---------------- */
+const STYLES = {
+  bright: { name: 'Bright Anime', grad: [88, 150, 205, 235], ink: 0x1b1626, tint: 0xffffff, day: [0x3a9cff, 0xb8dcff], dusk: [0x5a5aa8, 0xffb08a], night: [0x0a1030, 0x28305a], hemi: 1, sun: 1, sunCol: 0xfff4e0, fog: 1, css: '' },
+  painted: { name: 'Painted Meadow', grad: [125, 150, 175, 200, 222, 240], ink: 0x5a4636, tint: 0xfff0d8, day: [0x7ab4e8, 0xf6e8d0], dusk: [0x8a6aa8, 0xffc890], night: [0x1a1a3a, 0x3a3a5a], hemi: 1.2, sun: 0.8, sunCol: 0xffdca8, fog: 0.7, css: 'saturate(0.78) sepia(0.2) contrast(0.9) brightness(1.05)' },
+  crisp: { name: 'Crisp Cel', grad: [105, 250], ink: 0x0c0c16, tint: 0xf2f8ff, day: [0x1468ff, 0x9ed2ff], dusk: [0x3a4ab8, 0xff9a7a], night: [0x060a24, 0x1a2250], hemi: 0.8, sun: 1.4, sunCol: 0xffffff, fog: 1.4, css: 'saturate(1.3) contrast(1.15)' },
+  twilight: { name: 'Twilight Festival', grad: [70, 130, 195, 240], ink: 0x1a1030, tint: 0xffe2cc, day: [0x3a9cff, 0xb8dcff], dusk: [0x4a3aa8, 0xff9a6a], night: [0x0a1030, 0x28305a], hemi: 1.05, sun: 1.1, sunCol: 0xfff4e0, fog: 0.9, lockT: 0.615, css: 'saturate(1.15)' },
+  moonlit: { name: 'Moonlit Night', grad: [70, 120, 190, 235], ink: 0x0a0a20, tint: 0xd8e4ff, day: [0x3a9cff, 0xb8dcff], dusk: [0x4a3aa8, 0xff9a6a], night: [0x101c58, 0x3a4a90], hemi: 1.6, sun: 1, sunCol: 0xfff4e0, fog: 0.8, lockT: 0.86, css: 'brightness(1.2) saturate(1.1)' },
+};
+let STYLE_ID = 'bright';
+try { const q = new URLSearchParams(location.search).get('style'); STYLE_ID = STYLES[q] ? q : STYLES[store.get('ev-style', 'bright')] ? store.get('ev-style', 'bright') : 'bright'; } catch (e) {}
+const ST = STYLES[STYLE_ID];
+if (ST.css) canvas.style.filter = ST.css;
+
 /* ---------------- cel shading ---------------- */
 const GRAD = (() => {
-  const t = new THREE.DataTexture(new Uint8Array([88, 150, 205, 235]), 4, 1, THREE.LuminanceFormat);
+  const t = new THREE.DataTexture(new Uint8Array(ST.grad), ST.grad.length, 1, THREE.LuminanceFormat);
   t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t;
 })();
 const toon = (color, o = {}) => new THREE.MeshToonMaterial(Object.assign({ color, gradientMap: GRAD }, o));
 const basic = (color, o = {}) => new THREE.MeshBasicMaterial(Object.assign({ color }, o));
 const glow = (color, opacity = 0.35) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
-const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x1b1626, side: THREE.BackSide });
+const OUTLINE = new THREE.MeshBasicMaterial({ color: ST.ink, side: THREE.BackSide });
 // Ink outline: a slightly larger back-faced copy of each mesh.
 function outline(root, w = 0.03) {
   const list = [];
@@ -724,7 +738,7 @@ const terrain = (() => {
     pos.setY(i, h); groundColor(x, z, h, c); cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(cols, 3)); geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, toon(0xffffff, { vertexColors: true })); m.receiveShadow = true; scene.add(m); return m;
+  const m = new THREE.Mesh(geo, toon(ST.tint, { vertexColors: true })); m.receiveShadow = true; scene.add(m); return m;
 })();
 const water = new THREE.Mesh(new THREE.PlaneGeometry(SIZE * 2, SIZE * 2).rotateX(-Math.PI / 2), toon(0x4cb6ea, { transparent: true, opacity: 0.8 }));
 water.position.y = 0; scene.add(water);
@@ -750,15 +764,15 @@ const grassGeo = mergeGeos([G.cone(0.07, 0.7, 3).translate(0, 0.35, 0), G.cone(0
 const flowerGeo = mergeGeos([G.sph(0.16, 6, 4).translate(0, 0.45, 0), G.cyl(0.02, 0.02, 0.45, 3).translate(0, 0.22, 0)]);
 
 const INST = {
-  trunk: { geo: trunkGeo, mat: toon(0xffffff), shadow: true },
-  trunkDark: { geo: trunkGeo, mat: toon(0xffffff), shadow: true },
-  round: { geo: roundGeo, mat: toon(0xffffff), shadow: true, outline: 0.09 },
-  pine: { geo: pineGeo, mat: toon(0xffffff), shadow: true, outline: 0.09 },
-  willow: { geo: willowGeo, mat: toon(0xffffff), shadow: true, outline: 0.09 },
-  dead: { geo: deadGeo, mat: toon(0xffffff), shadow: true },
-  rock: { geo: rockGeo, mat: toon(0xffffff), shadow: true, outline: 0.07 },
-  grass: { geo: grassGeo, mat: toon(0xffffff), shadow: false, near: true },
-  flower: { geo: flowerGeo, mat: toon(0xffffff), shadow: false, near: true },
+  trunk: { geo: trunkGeo, mat: toon(ST.tint), shadow: true },
+  trunkDark: { geo: trunkGeo, mat: toon(ST.tint), shadow: true },
+  round: { geo: roundGeo, mat: toon(ST.tint), shadow: true, outline: 0.09 },
+  pine: { geo: pineGeo, mat: toon(ST.tint), shadow: true, outline: 0.09 },
+  willow: { geo: willowGeo, mat: toon(ST.tint), shadow: true, outline: 0.09 },
+  dead: { geo: deadGeo, mat: toon(ST.tint), shadow: true },
+  rock: { geo: rockGeo, mat: toon(ST.tint), shadow: true, outline: 0.07 },
+  grass: { geo: grassGeo, mat: toon(ST.tint), shadow: false, near: true },
+  flower: { geo: flowerGeo, mat: toon(ST.tint), shadow: false, near: true },
 };
 const TREE_PLAN = {
   vale: { n: 750, dens: 0.5, kinds: [['round', 0.55, () => tmpC.setHSL(rand(0.24, 0.31), rand(0.55, 0.7), rand(0.42, 0.5))], ['sakura', 0.45, () => tmpC.setHSL(rand(0.92, 0.97), rand(0.7, 0.85), rand(0.78, 0.86))]] },
@@ -2818,7 +2832,9 @@ function renderSettings() {
   document.querySelectorAll('#setGfx button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === GFX)));
   document.querySelectorAll('#setPlates button').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.v === 'on') === showPlates)));
   $('setSens').value = SENS;
+  document.querySelectorAll('#setStyle button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === STYLE_ID)));
 }
+$('setStyle').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.dataset.v === STYLE_ID) return; store.set('ev-style', b.dataset.v); saveChar(); location.reload(); });
 $('setGfx').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; GFX = b.dataset.v; store.set('ev-gfx', GFX); applyGfx(); renderSettings(); });
 $('setPlates').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; showPlates = b.dataset.v === 'on'; store.set('ev-plates', showPlates); renderSettings(); });
 $('setSens').addEventListener('input', (e) => { SENS = +e.target.value; store.set('ev-sens', SENS); });
@@ -3006,19 +3022,21 @@ if (matchMedia('(pointer:coarse)').matches) document.body.classList.add('touch')
 $('btnRespawn').onclick = respawnPlayer;
 
 /* ---------------- day / night ---------------- */
-const DAY_LEN = 600, sky = { day: [0x3a9cff, 0xb8dcff], dusk: [0x5a5aa8, 0xffb08a], night: [0x0a1030, 0x28305a] };
+const DAY_LEN = 600, sky = { day: ST.day, dusk: ST.dusk, night: ST.night };
+let LOCK_T = ST.lockT;
+try { const q = new URLSearchParams(location.search).get('t'); if (q) LOCK_T = +q; } catch (e) {}
 const cA = new THREE.Color(), cB = new THREE.Color(), sunDir = new THREE.Vector3();
 function updateSky(dt) {
-  dayT = (dayT + dt / DAY_LEN) % 1;
+  dayT = LOCK_T !== undefined ? LOCK_T : (dayT + dt / DAY_LEN) % 1;
   const a = dayT < 0.65 ? (dayT / 0.65) * Math.PI : Math.PI + ((dayT - 0.65) / 0.35) * Math.PI, sh = Math.sin(a);
   sunDir.set(Math.cos(a), sh, 0.35).normalize();
   const df = smooth(-0.15, 0.3, sh), dusk = Math.max(0, 1 - Math.abs(sh) / 0.3) * 0.8;
   cA.set(sky.night[0]).lerp(tmpC.set(sky.day[0]), df).lerp(tmpC.set(sky.dusk[0]), dusk * 0.5); cB.set(sky.night[1]).lerp(tmpC.set(sky.day[1]), df).lerp(tmpC.set(sky.dusk[1]), dusk * 0.8);
   skyU.top.value.copy(cA); skyU.hor.value.copy(cB); skyU.bot.value.copy(cB).multiplyScalar(0.8); skyU.sunDir.value.copy(sunDir); skyU.sunCol.value.setHex(sh > 0 ? 0xfff2c8 : 0x9ab0ff);
-  scene.fog.color.copy(cB); scene.fog.near = 70 + df * 90; scene.fog.far = (GFX === 'low' ? 240 : 320) + df * 120;
-  hemi.intensity = 0.3 + 0.32 * df; hemi.color.setHSL(0.58, 0.6, 0.6 + 0.3 * df);
-  if (sh < 0) { sun.position.copy(sunDir).multiplyScalar(-1); sun.position.y = Math.abs(sun.position.y) + 0.4; sun.intensity = 0.3; sun.color.setHex(0x9ab0ff); }
-  else { sun.position.copy(sunDir); sun.intensity = 0.2 + 0.6 * df; sun.color.set(0xfff4e0).lerp(tmpC.set(0xffa070), dusk * 0.6); }
+  scene.fog.color.copy(cB); scene.fog.near = (70 + df * 90) * ST.fog; scene.fog.far = ((GFX === 'low' ? 240 : 320) + df * 120) * Math.min(1.15, ST.fog);
+  hemi.intensity = (0.3 + 0.32 * df) * ST.hemi; hemi.color.setHSL(0.58, 0.6, 0.6 + 0.3 * df);
+  if (sh < 0) { sun.position.copy(sunDir).multiplyScalar(-1); sun.position.y = Math.abs(sun.position.y) + 0.4; sun.intensity = 0.3 * ST.hemi; sun.color.setHex(0x9ab0ff); }
+  else { sun.position.copy(sunDir); sun.intensity = (0.2 + 0.6 * df) * ST.sun; sun.color.set(ST.sunCol).lerp(tmpC.set(0xffa070), dusk * 0.6); }
   sun.position.normalize().multiplyScalar(110).add(_v3.set(P.x, P.y, P.z)); sun.target.position.set(P.x, P.y, P.z);
   stars.material.opacity = 1 - smooth(-0.2, 0.1, sh);
   const cc = 0.35 + 0.65 * df; for (const c of clouds) { const u = c.userData; u.a += u.sp * dt; c.position.set(camera.position.x + Math.cos(u.a) * u.r, u.y, camera.position.z + Math.sin(u.a) * u.r); c.material.color.setRGB(cc, cc, cc + 0.05 * (1 - df)).lerp(tmpC.set(0xffb08a), dusk * 0.4); }

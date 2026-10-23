@@ -157,15 +157,28 @@ Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, n
 sun.shadow.bias = -0.0006;
 scene.add(sun); scene.add(sun.target);
 
+/* ---------------- art styles ---------------- */
+const STYLES = {
+  bright: { name: 'Bright Anime', grad: [88, 150, 205, 235], ink: 0x1b1626, tint: 0xffffff, day: [0x3a9cff, 0xb8dcff], dusk: [0x5a5aa8, 0xffb08a], night: [0x0a1030, 0x28305a], hemi: 1, sun: 1, sunCol: 0xfff4e0, fog: 1, css: '' },
+  painted: { name: 'Painted Meadow', grad: [125, 150, 175, 200, 222, 240], ink: 0x5a4636, tint: 0xfff0d8, day: [0x7ab4e8, 0xf6e8d0], dusk: [0x8a6aa8, 0xffc890], night: [0x1a1a3a, 0x3a3a5a], hemi: 1.2, sun: 0.8, sunCol: 0xffdca8, fog: 0.7, css: 'saturate(0.78) sepia(0.2) contrast(0.9) brightness(1.05)' },
+  crisp: { name: 'Crisp Cel', grad: [105, 250], ink: 0x0c0c16, tint: 0xf2f8ff, day: [0x1468ff, 0x9ed2ff], dusk: [0x3a4ab8, 0xff9a7a], night: [0x060a24, 0x1a2250], hemi: 0.8, sun: 1.4, sunCol: 0xffffff, fog: 1.4, css: 'saturate(1.3) contrast(1.15)' },
+  twilight: { name: 'Twilight Festival', grad: [70, 130, 195, 240], ink: 0x1a1030, tint: 0xffe2cc, day: [0x3a9cff, 0xb8dcff], dusk: [0x4a3aa8, 0xff9a6a], night: [0x0a1030, 0x28305a], hemi: 1.05, sun: 1.1, sunCol: 0xfff4e0, fog: 0.9, lockT: 0.615, css: 'saturate(1.15)' },
+  moonlit: { name: 'Moonlit Night', grad: [70, 120, 190, 235], ink: 0x0a0a20, tint: 0xd8e4ff, day: [0x3a9cff, 0xb8dcff], dusk: [0x4a3aa8, 0xff9a6a], night: [0x101c58, 0x3a4a90], hemi: 1.6, sun: 1, sunCol: 0xfff4e0, fog: 0.8, lockT: 0.86, css: 'brightness(1.2) saturate(1.1)' },
+};
+let STYLE_ID = 'bright';
+try { const q = new URLSearchParams(location.search).get('style'); STYLE_ID = STYLES[q] ? q : STYLES[store.get('ev-style', 'bright')] ? store.get('ev-style', 'bright') : 'bright'; } catch (e) {}
+const ST = STYLES[STYLE_ID];
+if (ST.css) canvas.style.filter = ST.css;
+
 /* ---------------- cel shading ---------------- */
 const GRAD = (() => {
-  const t = new THREE.DataTexture(new Uint8Array([88, 150, 205, 235]), 4, 1, THREE.LuminanceFormat);
+  const t = new THREE.DataTexture(new Uint8Array(ST.grad), ST.grad.length, 1, THREE.LuminanceFormat);
   t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t;
 })();
 const toon = (color, o = {}) => new THREE.MeshToonMaterial(Object.assign({ color, gradientMap: GRAD }, o));
 const basic = (color, o = {}) => new THREE.MeshBasicMaterial(Object.assign({ color }, o));
 const glow = (color, opacity = 0.35) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
-const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x1b1626, side: THREE.BackSide });
+const OUTLINE = new THREE.MeshBasicMaterial({ color: ST.ink, side: THREE.BackSide });
 // Ink outline: a slightly larger back-faced copy of each mesh.
 function outline(root, w = 0.03) {
   const list = [];
